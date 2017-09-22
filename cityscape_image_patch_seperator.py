@@ -1,5 +1,7 @@
 #!/usr/bin/python
-
+# This script extracts patches from cityscapes dataset images 
+# leftImg8bit and gtFine image set
+	
 import sys
 import os
 from skimage import io
@@ -11,8 +13,6 @@ import time
 # How many images you want to cut into patches
 # set to None to extract all of them
 imageSet = 100
-
-#global patchSize
 
 patchSize = 35
 rawImagePattern = 'leftImg8bit.png'
@@ -36,7 +36,7 @@ testImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftI
 outTestImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/test_set'
 
 ######################################################
-# gtFine Paths
+# Configure paths for gtFine labeled image set
 ######################################################
 trainFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/train'
 outTrainFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/train_set'
@@ -47,9 +47,6 @@ outValFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFi
 testFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/test'
 outTestFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/test_set'
 
-# labelTrainIds 
-#fineAnnotPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/train/aachen'
-#outAnnotPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/train_annot_patches'
 
 #############################################
 # Extracts the patches from the image and 
@@ -98,39 +95,6 @@ def imagePatchExtractor(image, file, city, imagepath, finepath, outpath):
 		j = 0
 
 
-######################################################
-# Extracts the patches from TrainLabelIds images
-# Pixel contains the id of the class
-######################################################
-def trainLabelsPatchExtractor(image, file, path):
-	counter = 0
-	index = 0
-	print file
-	print image.shape
-	h, w = image.shape
-	i = 0
-	j= 0
-
-	while i < h :
-		while j < w:
-			# Check bounds
-			if j > w or j > w-patchSize:
-				croppedImage = image[i:i+patchSize,w-patchSize::]
-			else:
-				croppedImage = image[i:i+patchSize,j:j+patchSize]
-
-			centerLabel = croppedImage[patchSize/2,patchSize/2]
-			
-			rename = file.replace(fineAnnotPattern, str(counter)+'_'+'L_'+ '{0:03d}'.format(centerLabel) +'_'+fineAnnotPattern )
-			io.imsave(outAnnotPath+'/'+rename, croppedImage)
-			
-			j += patchSize
-			counter += 1
-		
-		i += patchSize
-		if i > h-patchSize:
-			return
-		j = 0
 
 ############################################################
 # Checks if the folders for our extracted patches of images
@@ -145,15 +109,7 @@ def folderCheck():
 			os.mkdir(outValImgPath+'/'+classFolder)
 		if not os.path.isdir(outTestImgPath+'/'+classFolder):
 			os.mkdir(outTestImgPath+'/'+classFolder)
-		
-		'''
-		if classFolder not in os.listdir(outTrainImgPath):
-			os.mkdir(classFolder)
-		if classFolder not in os.listdir(outValFinePath):
-			os.mkdir(classFolder)
-		if classFolder not in os.listdir(outTestFinePath):
-			os.mkdir(classFolder)
-		'''
+
 
 ##########################################
 # Main function 
@@ -171,7 +127,6 @@ def main():
 			if imageSet is not None and counter == imageSet:
 				break
 			image = io.imread(trainImagePath+'/'+city+'/'+file)
-			#image = image/255.0
 			imagePatchExtractor(image, file, city, trainImagePath, trainFinePath, outTrainImgPath)
 			counter += 1
 
@@ -181,7 +136,6 @@ def main():
 			if imageSet is not None and counter == imageSet:
 				break
 			image = io.imread(valImagePath+'/'+city+'/'+file)
-			#image = image/255.0
 			imagePatchExtractor(image, file, city, valImagePath, valFinePath, outValImgPath)
 			counter += 1
 
@@ -195,19 +149,6 @@ def main():
 			imagePatchExtractor(image, file, city, testImagePath, testFinePath, outTestImgPath)
 			counter += 1
 
-	'''
-	# Extract Label images
-	counter = 0
-	for file in sorted(os.listdir(fineAnnotPath)):
-		if counter == imageSet:
-			break
-		if fineAnnotPattern not in file:
-			continue
-		image = io.imread(fineAnnotPath+'/'+file)
-		#image = image/255.0 
-		trainLabelsPatchExtractor(image, file, fineAnnotPath)
-		counter += 1
-	'''
 if __name__ == '__main__':
 	start_time = time.time()
 	main()
