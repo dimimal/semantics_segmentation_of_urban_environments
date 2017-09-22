@@ -69,13 +69,13 @@ test_datagen = ImageDataGenerator(rescale=1./255)
 
 trainGenerator = train_datagen.flow_from_directory(
             trainFolder,
-            target_size=(35, 35),
+            target_size=(img_rows, img_cols),
             batch_size=batch_size,
             class_mode='categorical')
 
 validationGenerator = test_datagen.flow_from_directory(
             valFolder,
-            target_size=(35, 35),
+            target_size=(img_rows, img_cols),
             batch_size=batch_size,
             class_mode='categorical')
 
