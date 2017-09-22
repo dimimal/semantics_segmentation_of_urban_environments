@@ -24,7 +24,8 @@ listLabels = [
 			'bus'  				   ,
 			'train'				   ,
 			'motorcycle'		   ,
-			'bicycle' 
+			'bicycle' 			   ,
+			'void'
 			]
 
 labels = {
@@ -46,7 +47,8 @@ labels = {
 			'bus'                  :   15    ,
 			'train'                :   16    ,
 			'motorcycle'           :   17    ,
-			'bicycle'              :   18
+			'bicycle'              :   18	 ,
+			'void'				   :  255	 
 		}
 
 idLabels = { id:label for label,id in labels.iteritems()}
