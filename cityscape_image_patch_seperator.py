@@ -12,7 +12,7 @@ import time
 
 # How many images you want to cut into patches
 # set to None to extract all of them
-imageSet = 100
+imageSet = 150
 
 patchSize = 35
 rawImagePattern = 'leftImg8bit.png'
@@ -22,7 +22,6 @@ finePattern = 'gtFine_labelTrainIds.png'
 # Configure paths for leftImg8bit image set
 #####################################################
 
-# imagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train/aachen'
 # Train set Paths
 trainImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train'
 outTrainImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train_set'
@@ -32,20 +31,15 @@ valImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftIm
 outValImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/validation_set'
 
 # Test set Paths
-testImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/test'
+testImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/refined_Test'
 outTestImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/test_set'
 
 ######################################################
 # Configure paths for gtFine labeled image set
 ######################################################
 trainFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/train'
-outTrainFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/train_set'
-
 valFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/val'
-outValFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/validation_set'
-
-testFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/test'
-outTestFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/test_set'
+testFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/refined_Test'
 
 
 #############################################
@@ -121,6 +115,7 @@ def main():
 	folderCheck()
 	
 	# Extract Raw images
+	'''
 	counter = 0
 	for city in sorted(os.listdir(trainImagePath)):
 		for file in sorted(os.listdir(trainImagePath+'/'+city)):
@@ -129,7 +124,7 @@ def main():
 			image = io.imread(trainImagePath+'/'+city+'/'+file)
 			imagePatchExtractor(image, file, city, trainImagePath, trainFinePath, outTrainImgPath)
 			counter += 1
-
+	'''
 	counter = 0
 	for city in sorted(os.listdir(valImagePath)):
 		for file in sorted(os.listdir(valImagePath+'/'+city)):
@@ -138,7 +133,7 @@ def main():
 			image = io.imread(valImagePath+'/'+city+'/'+file)
 			imagePatchExtractor(image, file, city, valImagePath, valFinePath, outValImgPath)
 			counter += 1
-
+	'''
 	counter = 0
 	for city in sorted(os.listdir(testImagePath)):
 		for file in sorted(os.listdir(testImagePath+'/'+city)):
@@ -148,7 +143,7 @@ def main():
 			#image = image/255.0
 			imagePatchExtractor(image, file, city, testImagePath, testFinePath, outTestImgPath)
 			counter += 1
-
+	'''
 if __name__ == '__main__':
 	start_time = time.time()
 	main()
