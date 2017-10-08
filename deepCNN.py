@@ -20,9 +20,9 @@ trainFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg
 valFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/validation_set'
 testFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/test_set'
 
-trainSetSize = 100000
-valSetSize = 100000
-testSetSize = 50000 
+trainSetSize = 100
+valSetSize = 100
+testSetSize = 100 
 
 #trainSetSize = 10000
 #valSetSize = 2000
@@ -33,22 +33,15 @@ np.random.seed(25)
 
 batch_size = 32
 num_classes = 19   
-epochs = 20
+epochs = 3
 img_rows, img_cols = 35, 35
 input_shape=(img_rows, img_cols, 3)
-
 
 model = Sequential()
 model.add(Conv2D(64, kernel_size=(5, 5),
                 activation='selu',
                 input_shape=input_shape,
                 kernel_initializer='glorot_uniform'))
-#BatchNormalization(axis=-1)
-
-model.add(Conv2D(64, kernel_size=(5, 5),
-                activation='selu', 
-                kernel_initializer='glorot_uniform'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
 
 #BatchNormalization(axis=-1)
 model.add(Conv2D(128, 
@@ -56,24 +49,8 @@ model.add(Conv2D(128,
                 kernel_size=(3,3), 
                 activation='selu',
                 kernel_initializer='glorot_uniform'))
-model.add(Conv2D(128, 
-                padding='valid',
-                kernel_size=(3,3), 
-                activation='selu',
-                kernel_initializer='glorot_uniform'))
 
-model.add(MaxPooling2D(pool_size=(2,2)))
 
-model.add(Conv2D(128, 
-                padding='same',
-                kernel_size=(3,3), 
-                activation='selu',
-                kernel_initializer='glorot_uniform'))
-model.add(Conv2D(128,
-                padding='same', 
-                kernel_size=(3,3), 
-                activation='selu',
-                kernel_initializer='glorot_uniform'))
 #BatchNormalization(axis=-1)
 model.add(MaxPooling2D(pool_size=(2,2)))
 
@@ -87,16 +64,16 @@ model.add(Flatten())
 #BatchNormalization()
 model.add(Dense(1024, 
             activation='selu', 
-            kernel_regularizer=l1(0.001),
-            activity_regularizer=l2(0.001), 
+            #kernel_regularizer=l1(0.001),
+            #activity_regularizer=l2(0.001), 
             kernel_initializer='glorot_uniform'))
 
 model.add(Dropout(0.5, seed=25))
 #BatchNormalization()
 model.add(Dense(1024, 
             activation='selu',
-            kernel_regularizer=l1(0.001),
-            activity_regularizer=l2(0.001),  
+            #kernel_regularizer=l1(0.001),
+            #activity_regularizer=l2(0.001),  
             kernel_initializer='glorot_uniform'))
 
 model.add(Dropout(0.5, seed=25))
@@ -145,6 +122,9 @@ testGenerator = test_datagen.flow_from_directory(
             batch_size=batch_size,
             class_mode='categorical')
 
+testCb = TestCallback(epochs, testGenerator, batch_size, testSetSize)
+
+
 history = model.fit_generator(
             trainGenerator,
             steps_per_epoch=trainSetSize//batch_size,
@@ -152,7 +132,9 @@ history = model.fit_generator(
             verbose=1, 
             validation_data=validationGenerator,
             validation_steps=valSetSize//batch_size,
-            callbacks=[tbCallBack, TestCallback(epochs, testGenerator)])
+            #callbacks=[tbCallBack, TestCallback(epochs, testGenerator, batch_size, testSetSize)])
+            callbacks=[tbCallBack, testCb])
+
 '''
 score = model.evaluate_generator(
             testGenerator, 
@@ -160,14 +142,15 @@ score = model.evaluate_generator(
             use_multiprocessing=True)
 '''
 # Print the test error and accuracy of the model
-print('Test loss:', score[0])
-print('Test accuracy:', score[1])
-
+#print('Test loss:', score[0])
+#print('Test accuracy:', score[1])
+#print(model.TestCallback.getItem(callback))
+#print(testCb.score)
 # Learning Curves Plots
 # summarize history for accuracy
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])
-plt.plot(TestCallback.score[:][1])
+plt.plot(testCb.score[:][1])
 plt.xlim(0, epochs)
 plt.xticks(np.arange(0, epochs+1, 5))
 plt.title('model accuracy')
@@ -179,7 +162,7 @@ plt.show()
 # summarize history for loss
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
-plt.plot(TestCallback.score[:][0])
+plt.plot(testCb.score[:][0])
 plt.xlim(0, epochs)
 plt.xticks(np.arange(0, epochs+1, 5))
 plt.title('model loss')
