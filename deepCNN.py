@@ -25,9 +25,9 @@ trainSetSize = 467827
 valSetSize = 224391
 testSetSize = 84453 
 
-#trainSetSize = 10000
-#valSetSize = 2000
-#testSetSize = 1000 
+#trainSetSize = 100
+#valSetSize = 200
+#testSetSize = 100 
 #weightsPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/weights_1_50.h5'
 
 np.random.seed(25)
@@ -173,11 +173,12 @@ history = model.fit_generator(
             callbacks=[tbCallBack, testCb])
 
 print("--- %s seconds ---" % (time.time() - start_time))
+print(testCb.score)
 # Learning Curves Plots
 # summarize history for accuracy
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])
-plt.plot(testCb.score[:][1])
+plt.plot(testCb.score[:,1])
 plt.xlim(0, epochs)
 plt.xticks(np.arange(0, epochs+1, 5))
 plt.title('model accuracy')
@@ -189,7 +190,7 @@ plt.show()
 # summarize history for loss
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
-plt.plot(testCb.score[:][0])
+plt.plot(testCb.score[:,0])
 plt.xlim(0, epochs)
 plt.xticks(np.arange(0, epochs+1, 5))
 plt.title('model loss')
@@ -200,6 +201,6 @@ plt.show()
 
 model_json = model.to_json()
 plot_model(model, to_file='model.png')
-with open('model_25.json', 'w') as jsonFile:
+with open('model_.json', 'w') as jsonFile:
     jsonFile.write(model_json) 
-model.save_weights('weights_model_25.h5')
+model.save_weights('weights_model_.h5')
