@@ -135,17 +135,9 @@ history = model.fit_generator(
             #callbacks=[tbCallBack, TestCallback(epochs, testGenerator, batch_size, testSetSize)])
             callbacks=[tbCallBack, testCb])
 
-'''
-score = model.evaluate_generator(
-            testGenerator, 
-            steps=testSetSize//batch_size, 
-            use_multiprocessing=True)
-'''
-# Print the test error and accuracy of the model
-#print('Test loss:', score[0])
-#print('Test accuracy:', score[1])
-#print(model.TestCallback.getItem(callback))
-#print(testCb.score)
+
+
+print(testCb.score)
 # Learning Curves Plots
 # summarize history for accuracy
 plt.plot(history.history['acc'])
