@@ -15,14 +15,15 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.regularizers import l1,l2
 from keras import backend as K
 from testCallback import TestCallback 
+import time
 
 trainFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train_set'
 valFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/validation_set'
 testFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/test_set'
 
-trainSetSize = 100
-valSetSize = 100
-testSetSize = 100 
+trainSetSize = 467827
+valSetSize = 224391
+testSetSize = 84453 
 
 #trainSetSize = 10000
 #valSetSize = 2000
@@ -33,12 +34,29 @@ np.random.seed(25)
 
 batch_size = 32
 num_classes = 19   
-epochs = 3
+epochs = 20
 img_rows, img_cols = 35, 35
 input_shape=(img_rows, img_cols, 3)
 
+start_time = time.time()
+
 model = Sequential()
 model.add(Conv2D(64, kernel_size=(5, 5),
+                activation='selu',
+                input_shape=input_shape,
+                kernel_initializer='glorot_uniform'))
+
+#BatchNormalization(axis=-1)
+model.add(Conv2D(64, 
+                padding='valid',                
+                kernel_size=(5,5), 
+                activation='selu',
+                kernel_initializer='glorot_uniform'))
+
+
+#BatchNormalization(axis=-1)
+model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Conv2D(128, kernel_size=(3,3),
                 activation='selu',
                 input_shape=input_shape,
                 kernel_initializer='glorot_uniform'))
@@ -49,11 +67,30 @@ model.add(Conv2D(128,
                 kernel_size=(3,3), 
                 activation='selu',
                 kernel_initializer='glorot_uniform'))
-
+model.add(Conv2D(128, 
+                padding='valid',                
+                kernel_size=(3,3), 
+                activation='selu',
+                kernel_initializer='glorot_uniform'))
+model.add(MaxPooling2D(pool_size=(2,2)))
+model.add(Conv2D(256, kernel_size=(3,3),
+                padding='same',
+                activation='selu',
+                input_shape=input_shape,
+                kernel_initializer='glorot_uniform'))
 
 #BatchNormalization(axis=-1)
+model.add(Conv2D(256, 
+                padding='same',                
+                kernel_size=(3,3), 
+                activation='selu',
+                kernel_initializer='glorot_uniform'))
+model.add(Conv2D(256, 
+                padding='same',                
+                kernel_size=(3,3), 
+                activation='selu',
+                kernel_initializer='glorot_uniform'))
 model.add(MaxPooling2D(pool_size=(2,2)))
-
 
 model.add(Flatten())
 
@@ -61,22 +98,22 @@ model.add(Flatten())
 #model.add(Dense(128, activation='selu', kernel_initializer='glorot_uniform'))
 #BatchNormalization()
 #model.add(Dense(1024, activation='selu', kernel_initializer='glorot_uniform'))
-#BatchNormalization()
-model.add(Dense(1024, 
+BatchNormalization()
+model.add(Dense(2048, 
             activation='selu', 
-            #kernel_regularizer=l1(0.001),
-            #activity_regularizer=l2(0.001), 
+            kernel_regularizer=l1(0.001),
+            activity_regularizer=l2(0.001), 
             kernel_initializer='glorot_uniform'))
 
 model.add(Dropout(0.5, seed=25))
-#BatchNormalization()
-model.add(Dense(1024, 
+BatchNormalization()
+model.add(Dense(2048, 
             activation='selu',
-            #kernel_regularizer=l1(0.001),
-            #activity_regularizer=l2(0.001),  
+            kernel_regularizer=l1(0.001),
+            activity_regularizer=l2(0.001),  
             kernel_initializer='glorot_uniform'))
-
 model.add(Dropout(0.5, seed=25))
+
 model.add(Dense(num_classes, activation='softmax', kernel_initializer='glorot_uniform'))
 
 model.compile(loss='categorical_crossentropy',
@@ -122,6 +159,7 @@ testGenerator = test_datagen.flow_from_directory(
             batch_size=batch_size,
             class_mode='categorical')
 
+# Instantiate callback object for testing on every epoch
 testCb = TestCallback(epochs, testGenerator, batch_size, testSetSize)
 
 
@@ -132,12 +170,9 @@ history = model.fit_generator(
             verbose=1, 
             validation_data=validationGenerator,
             validation_steps=valSetSize//batch_size,
-            #callbacks=[tbCallBack, TestCallback(epochs, testGenerator, batch_size, testSetSize)])
             callbacks=[tbCallBack, testCb])
 
-
-
-print(testCb.score)
+print("--- %s seconds ---" % (time.time() - start_time))
 # Learning Curves Plots
 # summarize history for accuracy
 plt.plot(history.history['acc'])
@@ -148,7 +183,7 @@ plt.xticks(np.arange(0, epochs+1, 5))
 plt.title('model accuracy')
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
-plt.legend(['train', 'validation','test'], loc='upper left')
+plt.legend(['train', 'validation', 'test'], loc='upper left')
 plt.show()
 
 # summarize history for loss
@@ -165,6 +200,6 @@ plt.show()
 
 model_json = model.to_json()
 plot_model(model, to_file='model.png')
-with open('model_22.json', 'w') as jsonFile:
+with open('model_25.json', 'w') as jsonFile:
     jsonFile.write(model_json) 
-model.save_weights('weights_model_24.h5')
+model.save_weights('weights_model_25.h5')
