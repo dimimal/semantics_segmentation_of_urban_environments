@@ -23,7 +23,7 @@ testFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8
 
 trainSetSize = 467827
 valSetSize = 224391
-testSetSize = 84453 
+testSetSize = 77657 
 
 #trainSetSize = 100
 #valSetSize = 200
@@ -34,64 +34,87 @@ np.random.seed(25)
 
 batch_size = 32
 num_classes = 19   
-epochs = 20
+epochs = 50
 img_rows, img_cols = 35, 35
 input_shape=(img_rows, img_cols, 3)
 
 start_time = time.time()
 
 model = Sequential()
-model.add(Conv2D(64, kernel_size=(5, 5),
-                activation='selu',
-                input_shape=input_shape,
-                kernel_initializer='glorot_uniform'))
-
-#BatchNormalization(axis=-1)
-model.add(Conv2D(64, 
-                padding='valid',                
-                kernel_size=(5,5), 
-                activation='selu',
-                kernel_initializer='glorot_uniform'))
-
-
-#BatchNormalization(axis=-1)
-model.add(MaxPooling2D(pool_size=(2,2)))
-model.add(Conv2D(128, kernel_size=(3,3),
-                activation='selu',
-                input_shape=input_shape,
-                kernel_initializer='glorot_uniform'))
-
-#BatchNormalization(axis=-1)
-model.add(Conv2D(128, 
-                padding='valid',                
-                kernel_size=(3,3), 
-                activation='selu',
-                kernel_initializer='glorot_uniform'))
-model.add(Conv2D(128, 
-                padding='valid',                
-                kernel_size=(3,3), 
-                activation='selu',
-                kernel_initializer='glorot_uniform'))
-model.add(MaxPooling2D(pool_size=(2,2)))
-model.add(Conv2D(256, kernel_size=(3,3),
+'''
+model.add(Conv2D(32, kernel_size=(3,3),
+                strides=(2,2),
                 padding='same',
                 activation='selu',
                 input_shape=input_shape,
                 kernel_initializer='glorot_uniform'))
 
-#BatchNormalization(axis=-1)
-model.add(Conv2D(256, 
+BatchNormalization(axis=-1)
+model.add(Conv2D(32, 
+                strides=(2,2),
                 padding='same',                
                 kernel_size=(3,3), 
                 activation='selu',
                 kernel_initializer='glorot_uniform'))
-model.add(Conv2D(256, 
+
+
+model.add(MaxPooling2D(pool_size=(2,2)))
+BatchNormalization(axis=-1)
+'''
+model.add(Conv2D(64, kernel_size=(3,3),
+                strides=(2,2),
+                padding='same',
+                input_shape=input_shape,
+                activation='selu',
+                kernel_initializer='glorot_uniform'))
+
+model.add(Conv2D(64, 
+                padding='same',
+                strides=(2,2),                
+                kernel_size=(3,3), 
+                activation='selu',
+                kernel_initializer='glorot_uniform'))
+model.add(MaxPooling2D(pool_size=(2,2)))
+BatchNormalization(axis=-1)
+
+model.add(Conv2D(128, kernel_size=(3,3),
+                padding='same',
+                activation='selu',
+                kernel_initializer='glorot_uniform'))
+
+BatchNormalization(axis=-1)
+model.add(Conv2D(128, 
                 padding='same',                
                 kernel_size=(3,3), 
                 activation='selu',
                 kernel_initializer='glorot_uniform'))
 model.add(MaxPooling2D(pool_size=(2,2)))
-
+BatchNormalization(axis=-1)
+model.add(Conv2D(256, 
+                padding='same',                
+                kernel_size=(3,3), 
+                activation='selu',
+                kernel_initializer='glorot_uniform'))
+BatchNormalization(axis=-1)
+model.add(Conv2D(256, 
+                padding='same',                
+                kernel_size=(3,3), 
+                activation='selu',
+                kernel_initializer='glorot_uniform'))
+model.add(MaxPooling2D(pool_size=(2,2),padding='same'))
+BatchNormalization(axis=-1)
+model.add(Conv2D(512, 
+                padding='same',                
+                kernel_size=(3,3), 
+                activation='selu',
+                kernel_initializer='glorot_uniform'))
+BatchNormalization(axis=-1)
+model.add(Conv2D(512, 
+                padding='same',                
+                kernel_size=(3,3), 
+                activation='selu',
+                kernel_initializer='glorot_uniform'))
+model.add(MaxPooling2D(pool_size=(2,2), padding='same'))
 model.add(Flatten())
 
 #BatchNormalization()
@@ -101,19 +124,26 @@ model.add(Flatten())
 BatchNormalization()
 model.add(Dense(2048, 
             activation='selu', 
-            kernel_regularizer=l1(0.001),
-            activity_regularizer=l2(0.001), 
+            kernel_regularizer=l2(0.01),
+            activity_regularizer=l2(0.01), 
             kernel_initializer='glorot_uniform'))
-
-model.add(Dropout(0.5, seed=25))
 BatchNormalization()
-model.add(Dense(2048, 
-            activation='selu',
-            kernel_regularizer=l1(0.001),
-            activity_regularizer=l2(0.001),  
+model.add(Dropout(0.5))
+model.add(Dense(1024, 
+            activation='selu', 
+            kernel_regularizer=l2(0.01),
+            activity_regularizer=l2(0.01), 
             kernel_initializer='glorot_uniform'))
-model.add(Dropout(0.5, seed=25))
 
+BatchNormalization()
+model.add(Dropout(0.5))
+model.add(Dense(512, 
+            activation='selu',
+            kernel_regularizer=l2(0.01),
+            activity_regularizer=l2(0.01),  
+            kernel_initializer='glorot_uniform'))
+BatchNormalization()
+model.add(Dropout(0.5))
 model.add(Dense(num_classes, activation='softmax', kernel_initializer='glorot_uniform'))
 
 model.compile(loss='categorical_crossentropy',
@@ -173,7 +203,7 @@ history = model.fit_generator(
             callbacks=[tbCallBack, testCb])
 
 print("--- %s seconds ---" % (time.time() - start_time))
-print(testCb.score)
+
 # Learning Curves Plots
 # summarize history for accuracy
 plt.plot(history.history['acc'])
@@ -201,6 +231,6 @@ plt.show()
 
 model_json = model.to_json()
 plot_model(model, to_file='model.png')
-with open('model_.json', 'w') as jsonFile:
+with open('model_26.json', 'w') as jsonFile:
     jsonFile.write(model_json) 
-model.save_weights('weights_model_.h5')
+model.save_weights('weights_model_26.h5')
