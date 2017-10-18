@@ -12,9 +12,11 @@ import time
 
 # How many images you want to cut into patches
 # set to None to extract all of them
-imageSet = 150
+trainImageSet = 300
+valImageSet = 150
+testImageSet = 50
 
-patchSize = 35
+patchSize = 224
 rawImagePattern = 'leftImg8bit.png'
 finePattern = 'gtFine_labelTrainIds.png'
 
@@ -24,15 +26,15 @@ finePattern = 'gtFine_labelTrainIds.png'
 
 # Train set Paths
 trainImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train'
-outTrainImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train_set'
+outTrainImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train_set_224'
 
 # Validation set Paths
 valImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/val'
-outValImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/validation_set'
+outValImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/validation_set_224'
 
 # Test set Paths
 testImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/refined_Test'
-outTestImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/test_set'
+outTestImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/test_set_224'
 
 ######################################################
 # Configure paths for gtFine labeled image set
@@ -53,6 +55,7 @@ def imagePatchExtractor(image, file, city, imagepath, finepath, outpath):
 	i = 0
 	j= 0
 	
+	# load the annoated image
 	labelImage = io.imread(finepath+'/'+city+'/'+re.findall('\w+_\d+_\d+_', file)[0]+finePattern)
 
 	while i < h :
@@ -115,35 +118,35 @@ def main():
 	folderCheck()
 	
 	# Extract Raw images
-	'''
 	counter = 0
 	for city in sorted(os.listdir(trainImagePath)):
 		for file in sorted(os.listdir(trainImagePath+'/'+city)):
-			if imageSet is not None and counter == imageSet:
+			if trainImageSet is not None and counter == trainImageSet:
 				break
 			image = io.imread(trainImagePath+'/'+city+'/'+file)
 			imagePatchExtractor(image, file, city, trainImagePath, trainFinePath, outTrainImgPath)
 			counter += 1
-	'''
+	
+	
 	counter = 0
 	for city in sorted(os.listdir(valImagePath)):
 		for file in sorted(os.listdir(valImagePath+'/'+city)):
-			if imageSet is not None and counter == imageSet:
+			if valImageSet is not None and counter == valImageSet:
 				break
 			image = io.imread(valImagePath+'/'+city+'/'+file)
 			imagePatchExtractor(image, file, city, valImagePath, valFinePath, outValImgPath)
 			counter += 1
-	'''
+	
 	counter = 0
 	for city in sorted(os.listdir(testImagePath)):
 		for file in sorted(os.listdir(testImagePath+'/'+city)):
-			if imageSet is not None and counter == imageSet:
+			if testImageSet is not None and counter == testImageSet:
 				break
 			image = io.imread(testImagePath+'/'+city+'/'+file)
 			#image = image/255.0
 			imagePatchExtractor(image, file, city, testImagePath, testFinePath, outTestImgPath)
 			counter += 1
-	'''
+
 if __name__ == '__main__':
 	start_time = time.time()
 	main()
