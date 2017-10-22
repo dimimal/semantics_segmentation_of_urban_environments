@@ -15,11 +15,13 @@ from keras.layers.normalization import BatchNormalization
 from keras.preprocessing.image import ImageDataGenerator
 from keras.regularizers import l1,l2
 from keras import backend as K
+from keras.constraints import max_norm
 from testCallback import TestCallback
 from keras.callbacks import EarlyStopping
 
-patchSize = 140
 
+patchSize = 140
+channels = 3
 trainFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train_set_'+str(patchSize)
 valFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/validation_set_'+str(patchSize)
 testFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/test_set_'+str(patchSize)
@@ -28,6 +30,11 @@ trainSetSize = 30000
 valSetSize = 15000
 testSetSize = 5000 
 
+def csvToArray(patchSize, size, channels):
+    X_train = np.genfromtxt('X_train_set_'+str(patchSize))
+    Y_train = np.genfromtxt('Y_train_set_'+str(patchSize))
+    xTrainArray = reshape(X_train,(size,patchSize*patchSize*channels))
+    
 #trainSetSize = 100
 #valSetSize = 200
 #testSetSize = 100 
@@ -45,6 +52,7 @@ start_time = time.time()
 
 model = Sequential()
 model.add(Conv2D(32, kernel_size=(7, 7),
+                kernel_constraint=max_norm(3.),
                 activation='selu',
                 input_shape=input_shape,
                 kernel_initializer='glorot_uniform'))
@@ -63,10 +71,12 @@ model.add(Conv2D(32,
 model.add(MaxPooling2D(pool_size=(5,5)))
 #model.add(Dropout(0.1))
 model.add(Conv2D(64, kernel_size=(5,5),
+                kernel_constraint=max_norm(3.),
                 activation='selu',
                 kernel_initializer='glorot_uniform'))
 
 model.add(Conv2D(64, kernel_size=(5,5),
+                kernel_constraint=max_norm(3.),
                 activation='selu',
                 kernel_initializer='glorot_uniform'))
 
@@ -76,12 +86,14 @@ model.add(Conv2D(64, kernel_size=(5,5),
 model.add(Conv2D(64, 
                 padding='valid',                
                 kernel_size=(3,3), 
+                kernel_constraint=max_norm(3.),
                 activation='selu',
                 kernel_initializer='glorot_uniform'))
 model.add(MaxPooling2D(pool_size=(3,3)))
 #model.add(Dropout(0.1))
 
 model.add(Conv2D(128, kernel_size=(3,3),
+                kernel_constraint=max_norm(3.),
                 padding='same',
                 activation='selu',
                 input_shape=input_shape,
@@ -93,6 +105,7 @@ model.add(Conv2D(128, kernel_size=(3,3),
 model.add(Conv2D(128, 
                 padding='same',                
                 kernel_size=(3,3), 
+                kernel_constraint=max_norm(3.),
                 activation='selu',
                 kernel_initializer='glorot_uniform'))
 model.add(MaxPooling2D(pool_size=(2,2)))
