@@ -46,21 +46,21 @@ imValImgs = np.empty((valLen,patchsize,patchsize,channels), dtype=float)
 imTestImgs = np.empty((testLen,patchsize,patchsize,channels), dtype=float)
 
 # Create the csv files (Train, Validation, Test)
-X_trainCsv = open(trainImgPath+'/'+'X_train_set_'+str(patchsize), 'w+')
-Y_trainCsv = open(trainImgPath+'/'+'Y_train_set_'+str(patchsize), 'w+')
+X_trainCsv = open(trainImgPath+'/'+'X_train_set_'+str(patchsize)+'.npz', 'w+')
+Y_trainCsv = open(trainImgPath+'/'+'Y_train_set_'+str(patchsize)+'.npz', 'w+')
 
 '''
 xTrainWriter = csv.writer(X_trainCsv)
 yTrainWriter = csv.writer(Y_trainCsv)
 '''
-X_valCsv = open(valImgPath+'/'+'X_val_set_'+str(patchsize), 'w+')
-Y_valCsv = open(valImgPath+'/'+'Y_val_set_'+str(patchsize), 'w+')
+X_valCsv = open(valImgPath+'/'+'X_val_set_'+str(patchsize)+'.npz', 'w+')
+Y_valCsv = open(valImgPath+'/'+'Y_val_set_'+str(patchsize)+'.npz', 'w+')
 '''
 xValWriter = csv.writer(X_valCsv)
 yValWriter = csv.writer(Y_valCsv)
 '''
-X_testCsv = open(testImgPath+'/'+'X_test_set_'+str(patchsize), 'w+')
-Y_testCsv = open(testImgPath+'/'+'Y_test_set_'+str(patchsize), 'w+')
+X_testCsv = open(testImgPath+'/'+'X_test_set_'+str(patchsize)+'.npz', 'w+')
+Y_testCsv = open(testImgPath+'/'+'Y_test_set_'+str(patchsize)+'.npz', 'w+')
 '''
 xTestWriter = csv.writer(X_testCsv)
 yTestWriter = csv.writer(Y_testCsv)
@@ -78,9 +78,10 @@ for label in sorted(os.listdir(trainImgPath)):
 		imTrainImgs[index] = np.array(im)
 		yLabel.append(labels.labels[label])
 		index += 1
-		
-np.savez_compressed(X_trainCsv, imTrainImgs)
-np.savez_compressed(Y_trainCsv, np.array(yLabel))
+
+print imTrainImgs.shape
+np.save(X_trainCsv, imTrainImgs)
+np.save(Y_trainCsv, np.array(yLabel))
 imTrainImgs = None
 X_trainCsv.close()
 Y_trainCsv.close()
@@ -97,8 +98,8 @@ for label in sorted(os.listdir(valImgPath)):
 		yLabel.append(labels.labels[label])
 		index += 1
 
-np.savez_compressed(X_valCsv, imValImgs)
-np.savez_compressed(Y_valCsv, np.array(yLabel))
+np.save(X_valCsv, imValImgs)
+np.save(Y_valCsv, np.array(yLabel))
 imValImgs = None
 X_valCsv.close()
 Y_valCsv.close()
@@ -114,8 +115,8 @@ for label in sorted(os.listdir(testImgPath)):
 		imTestImgs[index] = np.array(im)
 		yLabel.append(labels.labels[label])
 
-np.savez_compressed(X_testCsv, imTestImgs)
-np.savez_compressed(Y_testCsv, np.array(yLabel))
+np.save(X_testCsv, imTestImgs)
+np.save(Y_testCsv, np.array(yLabel))
 imTestImgs = None
 X_testCsv.close()
 Y_testCsv.close()
