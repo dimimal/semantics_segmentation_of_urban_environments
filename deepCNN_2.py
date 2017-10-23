@@ -27,7 +27,30 @@ testFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8
 
 trainSetSize = 30000
 valSetSize = 15000
-testSetSize = 5000 
+testSetSize = 5000
+
+def checkLength():
+# Find the total number of images in the dataset (train, val, test)
+# to initialize the np arrays
+    trainLen = 0
+    for label in sorted(os.listdir(trainImgPath)):
+        if label not in labels.listLabels:
+            continue
+        for image in sorted(os.listdir(trainImgPath+'/'+label)):
+            trainLen += 1
+    valLen = 0
+    for label in sorted(os.listdir(valImgPath)):
+        if label not in labels.listLabels:
+            continue
+        for image in sorted(os.listdir(valImgPath+'/'+label)):
+            valLen += 1
+
+    testLen = 0
+    for label in sorted(os.listdir(testImgPath)):
+        if label not in labels.listLabels:
+            continue
+        for image in sorted(os.listdir(testImgPath+'/'+label)):
+            testLen += 1
 '''
 # loadData: Loads the dataset from npz files
 # Input:
@@ -57,10 +80,17 @@ X_test, Y_test = loadData(testFolder, patchSize, testSetSize, channels, flag='Te
 #valSetSize = 200
 #testSetSize = 100 
 #weightsPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/weights_1_50.h5'
-def dataGenerator(path):
-    X = np.memmap(path+'/'+'X_train_set_'+str(patchSize)+'.npz', )
-    Y = np.load(path+'/'+'Y_train_set_'+str(patchSize)+'.npz')
-    return X, Y
+def dataGenerator(path, setSize, patchSize):
+    index = 0
+    offset = 2000
+    while index < setSize:
+        X = np.memmap(path+'/'+'X_train_set_'+str(patchSize)+'.npy', mmap_mode='r')
+        Y = np.load(path+'/'+'Y_train_set_'+str(patchSize)+'.npy')
+        if setSize - index < offset:
+            yield X[index:setSize], Y[index:setSize]
+        else:  
+            yield X[index:index+offset], Y[index:index+offset]
+        index += offset
 
 np.random.seed(25)
 
@@ -69,6 +99,8 @@ num_classes = 19
 epochs = 20
 img_rows, img_cols = 224, 224
 input_shape=(img_rows, img_cols, channels)
+
+trainLen, valLen, testLen = checkLength()
 
 start_time = time.time()
 
@@ -183,16 +215,16 @@ tbCallBack = keras.callbacks.TensorBoard(
             write_graph=True, 
             write_images=True)
 
-train_datagen.fit(X_train)
+#train_datagen.fit(X_train)
 
 #X_train -= train_datagen.mean()
 #X_train /= (train_datagen.std + K.epsilon())
 
-X_val -= train_datagen.mean()
-X_val /= (train_datagen.std + K.epsilon())
+#X_val -= train_datagen.mean()
+#X_val /= (train_datagen.std + K.epsilon())
 
-X_test -= train_datagen.mean()
-X_test /= (train_datagen.std + K.epsilon())
+#X_test -= train_datagen.mean()
+#X_test /= (train_datagen.std + K.epsilon())
 
 #print(X_test[0:1,1:10,0])
 # Initialize the Generators
@@ -215,15 +247,15 @@ testGenerator = test_datagen.flow(
             batch_size=batch_size)
 
 # Instantiate callback object for testing on every epoch
-testCb = TestCallback(epochs, testGenerator, batch_size, testSetSize)
+testCb = TestCallback(epochs, testGenerator, trainGenerator, batch_size, testSetSize)
 #earlyStopping = EarlyStopping(monitor='val_loss', patience=2) 
 
 for e in range(epochs):
     print("epoch %d" % e)
-    for X_train, Y_train in dataGenerator(): 
+    for X_train, Y_train in dataGenerator(trainFolder, trainLen, patchSize): 
         for X_batch, Y_batch in train_datagen.flow(X_train, Y_train, shuffle=True, batch_size=batch_size):
             #loss = model.train(X_batch, Y_batch)
-            history = model.fit_generator(
+            history = model.fit(
                         trainGenerator,
                         steps_per_epoch=trainSetSize//batch_size,
                         epochs=epochs,
