@@ -18,6 +18,7 @@ from keras import backend as K
 from keras.constraints import max_norm
 from testCallback import TestCallback
 from keras.callbacks import EarlyStopping
+from sklearn.metrics import confusion_matrix
 
 
 patchSize = 140
@@ -26,14 +27,9 @@ trainFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg
 valFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/validation_set_'+str(patchSize)
 testFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/test_set_'+str(patchSize)
 
-trainSetSize = 30000
-valSetSize = 15000
-testSetSize = 5000 
-
-def csvToArray(patchSize, size, channels):
-    X_train = np.genfromtxt('X_train_set_'+str(patchSize))
-    Y_train = np.genfromtxt('Y_train_set_'+str(patchSize))
-    xTrainArray = reshape(X_train,(size,patchSize*patchSize*channels))
+trainSetSize = 10000
+valSetSize = 5000
+testSetSize = 2000 
     
 #trainSetSize = 100
 #valSetSize = 200
@@ -51,7 +47,7 @@ input_shape=(img_rows, img_cols, 3)
 start_time = time.time()
 
 model = Sequential()
-model.add(Conv2D(32, kernel_size=(7, 7),
+model.add(Conv2D(32, kernel_size=(5, 5),
                 kernel_constraint=max_norm(3.),
                 activation='selu',
                 input_shape=input_shape,
@@ -177,7 +173,7 @@ testGenerator = test_datagen.flow_from_directory(
             class_mode='categorical')
 
 # Instantiate callback object for testing on every epoch
-testCb = TestCallback(epochs, testGenerator, batch_size, testSetSize)
+#testCb = TestCallback(epochs, testGenerator, batch_size, testSetSize)
 #earlyStopping = EarlyStopping(monitor='val_loss', patience=2) 
 
 
@@ -188,7 +184,7 @@ history = model.fit_generator(
             verbose=1, 
             validation_data=validationGenerator,
             validation_steps=valSetSize//batch_size,
-            callbacks=[tbCallBack, testCb])
+            callbacks=[tbCallBack])
 
 print("--- %s seconds ---" % (time.time() - start_time))
 #print(testCb.score)

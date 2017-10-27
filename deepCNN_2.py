@@ -3,6 +3,8 @@
 from __future__ import print_function
 
 import keras
+import os
+import labels
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -18,6 +20,8 @@ from keras.constraints import max_norm
 from keras import backend as K
 from testCallback import TestCallback
 from keras.callbacks import EarlyStopping
+from sklearn import preprocessing
+import random
 
 patchSize = 224
 channels = 3
@@ -33,24 +37,25 @@ def checkLength():
 # Find the total number of images in the dataset (train, val, test)
 # to initialize the np arrays
     trainLen = 0
-    for label in sorted(os.listdir(trainImgPath)):
+    for label in sorted(os.listdir(trainFolder)):
         if label not in labels.listLabels:
             continue
-        for image in sorted(os.listdir(trainImgPath+'/'+label)):
+        for image in sorted(os.listdir(trainFolder+'/'+label)):
             trainLen += 1
     valLen = 0
-    for label in sorted(os.listdir(valImgPath)):
+    for label in sorted(os.listdir(valFolder)):
         if label not in labels.listLabels:
             continue
-        for image in sorted(os.listdir(valImgPath+'/'+label)):
+        for image in sorted(os.listdir(valFolder+'/'+label)):
             valLen += 1
 
     testLen = 0
-    for label in sorted(os.listdir(testImgPath)):
+    for label in sorted(os.listdir(testFolder)):
         if label not in labels.listLabels:
             continue
-        for image in sorted(os.listdir(testImgPath+'/'+label)):
+        for image in sorted(os.listdir(testFolder+'/'+label)):
             testLen += 1
+    return trainLen, valLen, testLen
 '''
 # loadData: Loads the dataset from npz files
 # Input:
@@ -80,17 +85,56 @@ X_test, Y_test = loadData(testFolder, patchSize, testSetSize, channels, flag='Te
 #valSetSize = 200
 #testSetSize = 100 
 #weightsPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/weights_1_50.h5'
-def dataGenerator(path, setSize, patchSize):
+# Data generator yielding the train set in sections of 2k samples
+#   Input: 
+#           path: The path of the trainset
+#           setSize: The size of dataset (samples)
+#           patchSize: The dimension of the image patch along rows or cols
+#   Output:
+#           The 2k samples from the train set
+def trainDataGenerator(path, setSize, patchSize):
     index = 0
-    offset = 2000
+    offset = 2000 # The chunk size
     while index < setSize:
-        X = np.memmap(path+'/'+'X_train_set_'+str(patchSize)+'.npy', mmap_mode='r')
+        X_map = np.lib.format.open_memmap(path+'/'+'X_train_set_'+str(patchSize)+'.npy', mode='r')
         Y = np.load(path+'/'+'Y_train_set_'+str(patchSize)+'.npy')
+        #X = np.array(X_map).reshape((-1, patchSize, patchSize, channels))
         if setSize - index < offset:
-            yield X[index:setSize], Y[index:setSize]
-        else:  
-            yield X[index:index+offset], Y[index:index+offset]
+            #X_norm = normalizeData(X[index:setSize])
+            yield np.array(X_map[index:setSize]).reshape((setSize-index, patchSize, patchSize, channels)), Y[index:setSize]
+        else: 
+            print(X_map[index:index+offset,:,:,:].shape) 
+            yield np.array(X_map[index:index+offset,:,:,:]).reshape((offset, patchSize, patchSize, channels)), Y[index:index+offset]
         index += offset
+
+
+'''
+def validDataGenerator(path, setSize, patchSize):
+    index = 0
+    offset = 2000 # The chunk size
+    while index < setSize:
+        X = np.memmap(path+'/'+'X_val_set_'+str(patchSize)+'.npy', mmap_mode='r')
+        Y = np.load(path+'/'+'Y_val_set_'+str(patchSize)+'.npy')
+        if setSize - index < offset:
+            #X_norm = normalizeData(X[index:setSize])
+            yield X[index:setSize].reshape(setSize-index,patchSize,patchSize,channels), Y[index:setSize]
+        else:  
+            yield X[index:index+offset].reshape(offset,patchSize,patchSize,channels), Y[index:index+offset]
+        index += offset    
+'''
+
+# Normalize data with zero mean and unit variance
+# Returns the normalized dataset
+def normalizeData(X_train, X_test):
+    #X_scaled = preprocessing.scale(X_train)
+    if X_test is None:
+        print(X_train[:,0,0,0].shape)
+        Scaler = preprocessing.StandardScaler(copy=True, with_mean=True, with_std=True).fit(X_train.reshape((X_train.reshape())))
+        return Scaler.transform(X_train)
+    else:
+        Scaler = preprocessing.StandardScaler(copy=True, with_mean=True, with_std=True).fit(X_train)
+        return Scaler.transform(X_test)
+
 
 np.random.seed(25)
 
@@ -194,8 +238,8 @@ model.compile(loss='categorical_crossentropy',
 #model.load_weights(weightsPath)
 # Data Generation
 train_datagen = ImageDataGenerator(
-                featurewise_std_normalization=True,
-                featurewise_center=True,
+                #featurewise_std_normalization=True,
+                #featurewise_center=True,
                 horizontal_flip=True,
                 width_shift_range=0.08, 
                 shear_range=0.3,
@@ -228,41 +272,43 @@ tbCallBack = keras.callbacks.TensorBoard(
 
 #print(X_test[0:1,1:10,0])
 # Initialize the Generators
+'''
 trainGenerator = train_datagen.flow(
             X_train,
             Y_train,
             shuffle=True,
             batch_size=batch_size)
-'''
 validationGenerator = val_datagen.flow(
             X_val,
             Y_val,
             shuffle=True,
             batch_size=batch_size)
 
-'''
 testGenerator = test_datagen.flow(
             X_test,
             Y_test,
             batch_size=batch_size)
+'''
 
 # Instantiate callback object for testing on every epoch
-testCb = TestCallback(epochs, testGenerator, trainGenerator, batch_size, testSetSize)
+#testCb = TestCallback(epochs, testGenerator, trainGenerator, batch_size, testSetSize)
 #earlyStopping = EarlyStopping(monitor='val_loss', patience=2) 
 
 for e in range(epochs):
     print("epoch %d" % e)
-    for X_train, Y_train in dataGenerator(trainFolder, trainLen, patchSize): 
-        for X_batch, Y_batch in train_datagen.flow(X_train, Y_train, shuffle=True, batch_size=batch_size):
+    for X_train, Y_train in trainDataGenerator(trainFolder, trainLen, patchSize): 
+        #dataGenerator(train, setSize, patchSize)
+        X_train_norm = normalizeData(X_train, None)
+        for X_batch, Y_batch in train_datagen.flow(X_train_norm, Y_train, shuffle=True, batch_size=batch_size):
             #loss = model.train(X_batch, Y_batch)
             history = model.fit(
-                        trainGenerator,
-                        steps_per_epoch=trainSetSize//batch_size,
-                        epochs=epochs,
+                        X_batch,Y_batch,
+                        #steps_per_epoch=trainSetSize//batch_size,
+                        epochs=1,
                         verbose=1, 
-                        validation_data=(X_val, Y_val),
-                        validation_steps=valSetSize//batch_size,
-                        callbacks=[tbCallBack, testCb])
+                        #validation_data=,
+                        #validation_steps=valSetSize//batch_size,
+                        callbacks=[tbCallBack])
 
 
 print("--- %s seconds ---" % (time.time() - start_time))
