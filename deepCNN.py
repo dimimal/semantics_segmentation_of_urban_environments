@@ -213,8 +213,8 @@ print("--- %s seconds ---" % (time.time() - start_time))
 y_pred = model.predict_generator(testGenerator, steps=testSetSize//batch_size, verbose=1)
 f1Score = f1_score(testGenerator.classes[:y_pred.shape[0]], np.argmax(y_pred, axis=1), average='micro')
 print('F1 score:: {}'.format(f1Score))
-cfMatrix = confusion_matrix(testGenerator.classes[:y_pred.shape[0]], np.argmax(y_pred, axis=1), labels=labels.idLabelsList)
-print(cfMatrix)
+#cfMatrix = confusion_matrix(testGenerator.classes[:y_pred.shape[0]], np.argmax(y_pred, axis=1), labels=labels.idLabelsList)
+
 # Learning Curves Plots
 # summarize history for accuracy
 plt.plot(history.history['acc'])
