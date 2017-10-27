@@ -14,29 +14,34 @@ from keras.layers.normalization import BatchNormalization
 from keras.preprocessing.image import ImageDataGenerator
 from keras.regularizers import l1,l2
 from keras import backend as K
-from testCallback import TestCallback 
+from sklearn.metrics import confusion_matrix, f1_score
+#from testCallback import TestCallback 
+import labels
 import time
 
-trainFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train_set'
-valFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/validation_set'
-testFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/test_set'
 
-trainSetSize = 467827
-valSetSize = 224391
-testSetSize = 77657 
+patchSize = 70
+trainFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train_set_'+str(patchSize)
+valFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/validation_set_'+str(patchSize)
+testFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/test_set_'+str(patchSize)
 
-#trainSetSize = 100
-#valSetSize = 200
-#testSetSize = 100 
+#trainSetSize = 467827
+#valSetSize = 224391
+#testSetSize = 77657 
+
+trainSetSize = 100
+valSetSize = 200
+testSetSize = 3000 
 #weightsPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/weights_1_50.h5'
 
 np.random.seed(25)
 
 batch_size = 32
 num_classes = 19   
-epochs = 50
-img_rows, img_cols = 35, 35
-input_shape=(img_rows, img_cols, 3)
+channels = 3
+epochs = 3
+img_rows, img_cols = 70, 70
+input_shape=(img_rows, img_cols, channels)
 
 start_time = time.time()
 
@@ -128,7 +133,7 @@ model.add(Dense(2048,
             activity_regularizer=l2(0.01), 
             kernel_initializer='glorot_uniform'))
 BatchNormalization()
-model.add(Dropout(0.5))
+model.add(Dropout(0.3))
 model.add(Dense(1024, 
             activation='selu', 
             kernel_regularizer=l2(0.01),
@@ -136,14 +141,14 @@ model.add(Dense(1024,
             kernel_initializer='glorot_uniform'))
 
 BatchNormalization()
-model.add(Dropout(0.5))
+model.add(Dropout(0.3))
 model.add(Dense(512, 
             activation='selu',
             kernel_regularizer=l2(0.01),
             activity_regularizer=l2(0.01),  
             kernel_initializer='glorot_uniform'))
 BatchNormalization()
-model.add(Dropout(0.5))
+model.add(Dropout(0.3))
 model.add(Dense(num_classes, activation='softmax', kernel_initializer='glorot_uniform'))
 
 model.compile(loss='categorical_crossentropy',
@@ -190,7 +195,7 @@ testGenerator = test_datagen.flow_from_directory(
             class_mode='categorical')
 
 # Instantiate callback object for testing on every epoch
-testCb = TestCallback(epochs, testGenerator, batch_size, testSetSize)
+#testCb = TestCallback(epochs, testGenerator, batch_size, testSetSize)
 
 
 history = model.fit_generator(
@@ -200,33 +205,37 @@ history = model.fit_generator(
             verbose=1, 
             validation_data=validationGenerator,
             validation_steps=valSetSize//batch_size,
-            callbacks=[tbCallBack, testCb])
+            callbacks=[tbCallBack])
 
 print("--- %s seconds ---" % (time.time() - start_time))
 
+# Get the predictions on the test set and calculate the F1-score
+y_pred = model.predict_generator(testGenerator, steps=testSetSize//batch_size, verbose=1)
+f1Score = f1_score(testGenerator.classes[:y_pred.shape[0]], np.argmax(y_pred, axis=1), average='micro')
+print('F1 score:: {}'.format(f1Score))
+cfMatrix = confusion_matrix(testGenerator.classes[:y_pred.shape[0]], np.argmax(y_pred, axis=1), labels=labels.idLabelsList)
+print(cfMatrix)
 # Learning Curves Plots
 # summarize history for accuracy
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])
-plt.plot(testCb.score[:,1])
 plt.xlim(0, epochs)
 plt.xticks(np.arange(0, epochs+1, 5))
 plt.title('model accuracy')
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
-plt.legend(['train', 'validation', 'test'], loc='upper left')
+plt.legend(['train', 'validation'], loc='upper left')
 plt.show()
 
 # summarize history for loss
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
-plt.plot(testCb.score[:,0])
 plt.xlim(0, epochs)
 plt.xticks(np.arange(0, epochs+1, 5))
 plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
-plt.legend(['train', 'validation','test'], loc='upper left')
+plt.legend(['train', 'validation'], loc='upper left')
 plt.show()
 
 model_json = model.to_json()
