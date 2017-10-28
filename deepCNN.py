@@ -16,9 +16,9 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.regularizers import l1,l2
 from keras import backend as K
 from keras.constraints import max_norm
-from testCallback import TestCallback
-from keras.callbacks import EarlyStopping
-
+#from testCallback import TestCallback
+from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from dataGenerator import DataGenerator
 
 patchSize = 140
 channels = 3
@@ -30,11 +30,6 @@ trainSetSize = 30000
 valSetSize = 15000
 testSetSize = 5000 
 
-def csvToArray(patchSize, size, channels):
-    X_train = np.genfromtxt('X_train_set_'+str(patchSize))
-    Y_train = np.genfromtxt('Y_train_set_'+str(patchSize))
-    xTrainArray = reshape(X_train,(size,patchSize*patchSize*channels))
-    
 #trainSetSize = 100
 #valSetSize = 200
 #testSetSize = 100 
@@ -177,8 +172,8 @@ testGenerator = test_datagen.flow_from_directory(
             class_mode='categorical')
 
 # Instantiate callback object for testing on every epoch
-testCb = TestCallback(epochs, testGenerator, batch_size, testSetSize)
-#earlyStopping = EarlyStopping(monitor='val_loss', patience=2) 
+#testCb = TestCallback(epochs, testGenerator, batch_size, testSetSize)
+earlyStopping = EarlyStopping(monitor='val_loss', patience=3, verbose=1) 
 
 
 history = model.fit_generator(
@@ -188,7 +183,7 @@ history = model.fit_generator(
             verbose=1, 
             validation_data=validationGenerator,
             validation_steps=valSetSize//batch_size,
-            callbacks=[tbCallBack, testCb])
+            callbacks=[earlyStopping, ])
 
 print("--- %s seconds ---" % (time.time() - start_time))
 #print(testCb.score)

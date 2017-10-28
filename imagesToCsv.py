@@ -6,13 +6,13 @@ import os
 import sys
 import time
 import labels
-import csv
 
 # The size of the image patch in rows or columns
 # Patches are always square
 patchsize = 224
 channels = 3
 yLabel = []
+offset = 1000 # Defines the chunk size sampling from the dataset 
 
 # Set the paths with suffic _patchsize (the image width of the patches)
 trainImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train_set_'+str(patchsize)
@@ -21,6 +21,7 @@ testImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg
 
 # Find the total number of images in the dataset (train, val, test)
 # to initialize the np arrays
+'''
 trainLen = 0
 for label in sorted(os.listdir(trainImgPath)):
 	if label not in labels.listLabels:
@@ -40,84 +41,102 @@ for label in sorted(os.listdir(testImgPath)):
 		continue
 	for image in sorted(os.listdir(testImgPath+'/'+label)):
 		testLen += 1
+'''
 
-imTrainImgs = np.empty((trainLen,patchsize,patchsize,channels), dtype=float)
-imValImgs = np.empty((valLen,patchsize,patchsize,channels), dtype=float)
-imTestImgs = np.empty((testLen,patchsize,patchsize,channels), dtype=float)
-
-# Create the csv files (Train, Validation, Test)
-X_trainCsv = open(trainImgPath+'/'+'X_train_set_'+str(patchsize), 'w+')
-Y_trainCsv = open(trainImgPath+'/'+'Y_train_set_'+str(patchsize), 'w+')
-
-'''
-xTrainWriter = csv.writer(X_trainCsv)
-yTrainWriter = csv.writer(Y_trainCsv)
-'''
-X_valCsv = open(valImgPath+'/'+'X_val_set_'+str(patchsize), 'w+')
-Y_valCsv = open(valImgPath+'/'+'Y_val_set_'+str(patchsize), 'w+')
-'''
-xValWriter = csv.writer(X_valCsv)
-yValWriter = csv.writer(Y_valCsv)
-'''
-X_testCsv = open(testImgPath+'/'+'X_test_set_'+str(patchsize), 'w+')
-Y_testCsv = open(testImgPath+'/'+'Y_test_set_'+str(patchsize), 'w+')
-'''
-xTestWriter = csv.writer(X_testCsv)
-yTestWriter = csv.writer(Y_testCsv)
-'''
 start_time = time.time()
+
+
 # Extract Raw images and save in csv row-wise
 # Each row contains an image width*height*channels
 print('Train set...')
+fileIndex = 1
+
+x_trainHandler = open(trainImgPath+'/'+'X_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+y_trainHandler = open(trainImgPath+'/'+'Y_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+
 index = 0
-for label in sorted(os.listdir(trainImgPath)):
+for label in os.listdir(trainImgPath):
 	if label not in labels.listLabels:
 		continue
-	for image in sorted(os.listdir(trainImgPath+'/'+label)):
-		im = Image.open(trainImgPath+'/'+label+'/'+image)
-		imTrainImgs[index] = np.array(im)
-		yLabel.append(labels.labels[label])
+	for image in os.listdir(trainImgPath+'/'+label):
+		im = np.array(Image.open(trainImgPath+'/'+label+'/'+image))
+		np.save(x_trainHandler, im)
+		np.save(y_trainHandler, labels.labels[label])
+		if index == offset-1:
+			fileIndex += 1
+			x_trainHandler.close()
+			y_trainHandler.close()
+
+			x_trainHandler = open(trainImgPath+'/'+'X_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+			y_trainHandler = open(trainImgPath+'/'+'Y_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+			index = 0
+			continue
 		index += 1
-		
-np.savez_compressed(X_trainCsv, imTrainImgs)
-np.savez_compressed(Y_trainCsv, np.array(yLabel))
-imTrainImgs = None
-X_trainCsv.close()
-Y_trainCsv.close()
-del yLabel[:]
+
+# sanity check for the remaining samples to be saved		
+if not x_trainHandler.closed and not y_trainHandler.closed:
+	x_trainHandler.close()
+	y_trainHandler.close() 
+
 
 print('Validation Set...')
+fileIndex = 1
+
+x_valHandler = open(valImgPath+'/'+'X_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+y_valHandler = open(valImgPath+'/'+'Y_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+
 index = 0
-for label in sorted(os.listdir(valImgPath)):
+for label in os.listdir(valImgPath):
 	if label not in labels.listLabels:
 		continue
-	for image in sorted(os.listdir(valImgPath+'/'+label)):
-		im = Image.open(valImgPath+'/'+label+'/'+image)
-		imValImgs[index] = np.array(im)
-		yLabel.append(labels.labels[label])
+	for image in os.listdir(valImgPath+'/'+label):
+		im = np.array(Image.open(valImgPath+'/'+label+'/'+image))
+		np.save(x_valHandler, im)
+		np.save(y_valHandler, labels.labels[label])
+		if index == offset-1:
+			fileIndex += 1
+			x_valHandler.close()
+			y_valHandler.close()
+
+			x_valHandler = open(valImgPath+'/'+'X_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+			y_valHandler = open(valImgPath+'/'+'Y_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+			index = 0
+			continue
 		index += 1
 
-np.savez_compressed(X_valCsv, imValImgs)
-np.savez_compressed(Y_valCsv, np.array(yLabel))
-imValImgs = None
-X_valCsv.close()
-Y_valCsv.close()
-del yLabel[:]
+# sanity check for the remaining samples to be saved		
+if not x_valHandler.closed and not y_valHandler.closed:
+	x_trainHandler.close()
+	y_trainHandler.close() 
 
 print('Test set...')
+fileIndex = 1
+
+x_testHandler = open(testImgPath+'/'+'X_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+y_testHandler = open(testImgPath+'/'+'Y_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+
 index = 0
-for label in sorted(os.listdir(testImgPath)):
+for label in os.listdir(testImgPath):
 	if label not in labels.listLabels:
 		continue
-	for image in sorted(os.listdir(testImgPath+'/'+label)):
-		im = Image.open(testImgPath+'/'+label+'/'+image)
-		imTestImgs[index] = np.array(im)
-		yLabel.append(labels.labels[label])
+	for image in os.listdir(testImgPath+'/'+label):
+		im = np.array(Image.open(testImgPath+'/'+label+'/'+image))
+		np.save(x_testHandler, im)
+		np.save(y_testHandler, labels.labels[label])
+		if index == offset-1:
+			fileIndex += 1
+			x_testHandler.close()
+			y_testHandler.close()
 
-np.savez_compressed(X_testCsv, imTestImgs)
-np.savez_compressed(Y_testCsv, np.array(yLabel))
-imTestImgs = None
-X_testCsv.close()
-Y_testCsv.close()
+			x_testHandler = open(testImgPath+'/'+'X_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+			y_testHandler = open(testImgPath+'/'+'Y_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+			index = 0
+			continue
+		index += 1
+
+# sanity check for the remaining samples to be saved		
+if not x_testHandler.closed and not y_testHandler.closed:
+	x_testHandler.close()
+	y_testHandler.close() 
 
 print("--- %s seconds ---" % (time.time() - start_time))
