@@ -49,4 +49,5 @@ labels = {
 			'bicycle'              :   18	 
 		}
 
-idLabels = { id:label for label,id in labels.iteritems()}
+idLabelsdict = { id:label for label,id in labels.iteritems()}
+idLabelsList = [id for label,id in labels.iteritems()]

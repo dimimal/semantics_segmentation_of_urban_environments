@@ -16,7 +16,7 @@ trainImageSet = 300
 valImageSet = 150
 testImageSet = 50
 
-patchSize = 140
+patchSize = 50
 rawImagePattern = 'leftImg8bit.png'
 finePattern = 'gtFine_labelTrainIds.png'
 
