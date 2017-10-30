@@ -107,16 +107,12 @@ model.add(MaxPooling2D(pool_size=(2,2)))
 
 model.add(Flatten())
 
-#BatchNormalization()
-#model.add(Dense(128, activation='selu', kernel_initializer='glorot_uniform'))
-#BatchNormalization()
-#model.add(Dense(1024, activation='selu', kernel_initializer='glorot_uniform'))
 BatchNormalization()
 model.add(Dense(1024, 
             activation='selu', 
             #kernel_regularizer=l2(0.0001),
             #activity_regularizer=l2(0.0001), 
-            kernel_initializer='glorot_uniform'))
+            kernel_initializer='lecun_uniform'))
 
 BatchNormalization()
 model.add(Dense(512, 
