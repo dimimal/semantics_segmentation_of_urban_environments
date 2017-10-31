@@ -42,7 +42,8 @@ for label in sorted(os.listdir(testImgPath)):
 	for image in sorted(os.listdir(testImgPath+'/'+label)):
 		testLen += 1
 '''
-
+imArray = np.array([])
+yLabels = np.array([])
 start_time = time.time()
 
 
@@ -51,8 +52,8 @@ start_time = time.time()
 print('Train set...')
 fileIndex = 1
 
-x_trainHandler = open(trainImgPath+'/'+'X_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
-y_trainHandler = open(trainImgPath+'/'+'Y_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+x_trainHandler = open(trainImgPath+'/'+'X_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
+y_trainHandler = open(trainImgPath+'/'+'Y_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
 
 index = 0
 for label in os.listdir(trainImgPath):
@@ -60,30 +61,46 @@ for label in os.listdir(trainImgPath):
 		continue
 	for image in os.listdir(trainImgPath+'/'+label):
 		im = np.array(Image.open(trainImgPath+'/'+label+'/'+image))
-		np.save(x_trainHandler, im)
-		np.save(y_trainHandler, labels.labels[label])
+		if imArray.size == patchsize*patchsize*channels:
+			imArray = np.stack((imArray, im), axis=0)
+			yLabels = np.append(yLabels, labels.labels[label])
+		elif imArray.size == 0:
+			imArray = im
+			yLabels = np.append(yLabels, labels.labels[label])
+		else:	
+			imArray = np.insert(imArray, index, im, axis=0)
+			yLabels = np.append(yLabels,labels.labels[label])			
+
 		if index == offset-1:
+			np.save(x_trainHandler, imArray)
+			np.save(y_trainHandler, yLabels)
 			fileIndex += 1
 			x_trainHandler.close()
 			y_trainHandler.close()
+			# Reset the arrays for refill
+			imArray = np.array([])
+			yLabels = np.array([])
 
-			x_trainHandler = open(trainImgPath+'/'+'X_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
-			y_trainHandler = open(trainImgPath+'/'+'Y_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+			x_trainHandler = open(trainImgPath+'/'+'X_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
+			y_trainHandler = open(trainImgPath+'/'+'Y_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
 			index = 0
 			continue
 		index += 1
 
 # sanity check for the remaining samples to be saved		
 if not x_trainHandler.closed and not y_trainHandler.closed:
+	np.save(x_trainHandler, imArray)
+	np.save(y_trainHandler, yLabels)
 	x_trainHandler.close()
 	y_trainHandler.close() 
-
+	imArray = np.array([])
+	yLabels = np.array([])
 
 print('Validation Set...')
 fileIndex = 1
 
-x_valHandler = open(valImgPath+'/'+'X_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
-y_valHandler = open(valImgPath+'/'+'Y_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+x_valHandler = open(valImgPath+'/'+'X_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
+y_valHandler = open(valImgPath+'/'+'Y_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
 
 index = 0
 for label in os.listdir(valImgPath):
@@ -91,29 +108,46 @@ for label in os.listdir(valImgPath):
 		continue
 	for image in os.listdir(valImgPath+'/'+label):
 		im = np.array(Image.open(valImgPath+'/'+label+'/'+image))
-		np.save(x_valHandler, im)
-		np.save(y_valHandler, labels.labels[label])
+		if imArray.size == patchsize*patchsize*channels:
+			imArray = np.stack((imArray, im), axis=0)
+			yLabels = np.append(yLabels, labels.labels[label])
+		elif imArray.size == 0:
+			imArray = im
+			yLabels = np.append(yLabels, labels.labels[label])
+		else:	
+			imArray = np.insert(imArray, index, im, axis=0)
+			yLabels = np.append(yLabels,labels.labels[label])			
+
 		if index == offset-1:
-			fileIndex += 1
+			np.save(x_valHandler, imArray)
+			np.save(y_valHandler, yLabels)
 			x_valHandler.close()
 			y_valHandler.close()
+			# Reset the arrays for refill
+			imArray = np.array([])
+			yLabels = np.array([])
 
-			x_valHandler = open(valImgPath+'/'+'X_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
-			y_valHandler = open(valImgPath+'/'+'Y_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+			fileIndex += 1
+			x_valHandler = open(valImgPath+'/'+'X_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
+			y_valHandler = open(valImgPath+'/'+'Y_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
 			index = 0
 			continue
 		index += 1
 
 # sanity check for the remaining samples to be saved		
 if not x_valHandler.closed and not y_valHandler.closed:
-	x_trainHandler.close()
-	y_trainHandler.close() 
+	np.save(x_valHandler, imArray)
+	np.save(y_valHandler, yLabels)
+	x_valHandler.close()
+	y_valHandler.close() 
+	imArray = np.array([])
+	yLabels = np.array([])
 
 print('Test set...')
 fileIndex = 1
 
-x_testHandler = open(testImgPath+'/'+'X_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
-y_testHandler = open(testImgPath+'/'+'Y_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+x_testHandler = open(testImgPath+'/'+'X_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
+y_testHandler = open(testImgPath+'/'+'Y_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
 
 index = 0
 for label in os.listdir(testImgPath):
@@ -121,21 +155,36 @@ for label in os.listdir(testImgPath):
 		continue
 	for image in os.listdir(testImgPath+'/'+label):
 		im = np.array(Image.open(testImgPath+'/'+label+'/'+image))
-		np.save(x_testHandler, im)
-		np.save(y_testHandler, labels.labels[label])
+		if imArray.size == patchsize*patchsize*channels:
+			imArray = np.stack((imArray, im), axis=0)
+			yLabels = np.append(yLabels, labels.labels[label])
+		elif imArray.size == 0:
+			imArray = im
+			yLabels = np.append(yLabels, labels.labels[label])
+		else:	
+			imArray = np.insert(imArray, index, im, axis=0)
+			yLabels = np.append(yLabels,labels.labels[label])			
+
 		if index == offset-1:
+			np.save(x_testHandler, imArray)
+			np.save(y_testHandler, yLabels)
 			fileIndex += 1
 			x_testHandler.close()
 			y_testHandler.close()
+			# Reset the arrays for refill
+			imArray = np.array([])
+			yLabels = np.array([])
 
-			x_testHandler = open(testImgPath+'/'+'X_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
-			y_testHandler = open(testImgPath+'/'+'Y_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'a+')
+			x_testHandler = open(testImgPath+'/'+'X_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
+			y_testHandler = open(testImgPath+'/'+'Y_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
 			index = 0
 			continue
 		index += 1
 
 # sanity check for the remaining samples to be saved		
 if not x_testHandler.closed and not y_testHandler.closed:
+	np.save(x_testHandler, imArray)
+	np.save(y_testHandler, yLabels)
 	x_testHandler.close()
 	y_testHandler.close() 
 
