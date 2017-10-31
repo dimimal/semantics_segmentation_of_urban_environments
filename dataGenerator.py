@@ -51,6 +51,7 @@ class DataGenerator(Callback):
 				X_train = np.load(self.trainPath+'/'+file)
 				Y_train = np.load(self.trainPath+'/'+self.Y_trainList[self.X_trainList.index(file)])
 				X, Y = self.shuffle(X_train, Y_train)
+				x /= 255.
 				X_scaled = self.scale(X)
 				while index < self.trainSetSize: 
 					try:
@@ -65,6 +66,7 @@ class DataGenerator(Callback):
 				X_val = np.load(self.valPath+'/'+file)
 				Y_val = np.load(self.valPath+'/'+self.Y_valList[self.X_valList.index(file)])
 				X, Y = self.shuffle(X_val, Y_val)
+				x /= 255.
 				X_scaled = self.scale(X)
 				while index < self.valSetSize: 
 					try:
@@ -79,6 +81,7 @@ class DataGenerator(Callback):
 				X_test = np.load(self.testPath+'/'+file)
 				Y_test = np.load(self.testPath+'/'+self.Y_testList[self.X_testList.index(file)])
 				X, Y = self.shuffle(X_test, Y_test)
+				x /= 255.				
 				np.append(self.allTestClasses, Y)
 				X_scaled = self.scale(X)
 				while index < self.testSetSize: 
@@ -137,6 +140,7 @@ class DataGenerator(Callback):
 	'''
 	def getStats(self):
 		X_sample = np.load(self.trainPath+'/'+random.choice(self.X_trainList))
+		X_sample /= 255.
 		self.mean = np.mean(X_sample, axis=0)
 		self.std = np.std(X_sample, axis=0)+K.epsilon() # Add a small constant to prevent division with zero
 		return
