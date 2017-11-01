@@ -10,7 +10,7 @@ import csv
 
 # The size of the image patch in rows or columns
 # Patches are always square
-patchsize = 224
+patchsize = 140
 channels = 3
 yLabel = []
 
