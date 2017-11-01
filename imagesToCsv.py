@@ -9,7 +9,7 @@ import labels
 
 # The size of the image patch in rows or columns
 # Patches are always square
-patchsize = 224
+patchsize = 140
 channels = 3
 yLabel = []
 offset = 1000 # Defines the chunk size sampling from the dataset 
@@ -52,8 +52,8 @@ start_time = time.time()
 print('Train set...')
 fileIndex = 1
 
-x_trainHandler = open(trainImgPath+'/'+'X_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
-y_trainHandler = open(trainImgPath+'/'+'Y_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
+x_trainHandler = open(trainImgPath+'/'+'X_train_set_'+str(patchsize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+y_trainHandler = open(trainImgPath+'/'+'Y_train_set_'+str(patchsize)+'_'+'%04d.npz'%(fileIndex), 'wb')
 
 index = 0
 for label in os.listdir(trainImgPath):
@@ -61,13 +61,15 @@ for label in os.listdir(trainImgPath):
 		continue
 	for image in os.listdir(trainImgPath+'/'+label):
 		im = np.array(Image.open(trainImgPath+'/'+label+'/'+image))
+		
+		print im.shape, label, image	
 		if imArray.size == patchsize*patchsize*channels:
 			imArray = np.stack((imArray, im), axis=0)
 			yLabels = np.append(yLabels, labels.labels[label])
 		elif imArray.size == 0:
 			imArray = im
 			yLabels = np.append(yLabels, labels.labels[label])
-		else:	
+		else:
 			imArray = np.insert(imArray, index, im, axis=0)
 			yLabels = np.append(yLabels,labels.labels[label])			
 
@@ -81,8 +83,8 @@ for label in os.listdir(trainImgPath):
 			imArray = np.array([])
 			yLabels = np.array([])
 
-			x_trainHandler = open(trainImgPath+'/'+'X_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
-			y_trainHandler = open(trainImgPath+'/'+'Y_train_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
+			x_trainHandler = open(trainImgPath+'/'+'X_train_set_'+str(patchsize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+			y_trainHandler = open(trainImgPath+'/'+'Y_train_set_'+str(patchsize)+'_'+'%04d.npz'%(fileIndex), 'wb')
 			index = 0
 			continue
 		index += 1
@@ -99,8 +101,8 @@ if not x_trainHandler.closed and not y_trainHandler.closed:
 print('Validation Set...')
 fileIndex = 1
 
-x_valHandler = open(valImgPath+'/'+'X_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
-y_valHandler = open(valImgPath+'/'+'Y_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
+x_valHandler = open(valImgPath+'/'+'X_val_set_'+str(patchsize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+y_valHandler = open(valImgPath+'/'+'Y_val_set_'+str(patchsize)+'_'+'%04d.npz'%(fileIndex), 'wb')
 
 index = 0
 for label in os.listdir(valImgPath):
@@ -128,8 +130,8 @@ for label in os.listdir(valImgPath):
 			yLabels = np.array([])
 
 			fileIndex += 1
-			x_valHandler = open(valImgPath+'/'+'X_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
-			y_valHandler = open(valImgPath+'/'+'Y_val_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
+			x_valHandler = open(valImgPath+'/'+'X_val_set_'+str(patchsize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+			y_valHandler = open(valImgPath+'/'+'Y_val_set_'+str(patchsize)+'_'+'%04d.npz'%(fileIndex), 'wb')
 			index = 0
 			continue
 		index += 1
@@ -146,8 +148,8 @@ if not x_valHandler.closed and not y_valHandler.closed:
 print('Test set...')
 fileIndex = 1
 
-x_testHandler = open(testImgPath+'/'+'X_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
-y_testHandler = open(testImgPath+'/'+'Y_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
+x_testHandler = open(testImgPath+'/'+'X_test_set_'+str(patchsize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+y_testHandler = open(testImgPath+'/'+'Y_test_set_'+str(patchsize)+'_'+'%04d.npz'%(fileIndex), 'wb')
 
 index = 0
 for label in os.listdir(testImgPath):
@@ -175,8 +177,8 @@ for label in os.listdir(testImgPath):
 			imArray = np.array([])
 			yLabels = np.array([])
 
-			x_testHandler = open(testImgPath+'/'+'X_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
-			y_testHandler = open(testImgPath+'/'+'Y_test_set_'+str(patchsize)+'_'+'%04d.npy'%(fileIndex), 'wb')
+			x_testHandler = open(testImgPath+'/'+'X_test_set_'+str(patchsize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+			y_testHandler = open(testImgPath+'/'+'Y_test_set_'+str(patchsize)+'_'+'%04d.npz'%(fileIndex), 'wb')
 			index = 0
 			continue
 		index += 1

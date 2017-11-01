@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import time
 from keras.utils import plot_model
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten
+from keras.layers import Dense, Dropout, Flatten, AlphaDropout
 from keras.layers import Conv2D, MaxPooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.preprocessing.image import ImageDataGenerator
@@ -45,12 +45,13 @@ input_shape=(img_rows, img_cols, 3)
 
 start_time = time.time()
 
+
 model = Sequential()
-model.add(Conv2D(32, kernel_size=(7, 7),
-                kernel_constraint=max_norm(3.),
+model.add(Conv2D(32, kernel_size=(5, 5),
+                #kernel_constraint=max_norm(3),
                 activation='selu',
                 input_shape=input_shape,
-                kernel_initializer='glorot_uniform'))
+                kernel_initializer='lecun_uniform'))
 #model.add(Dropout(0.1))
 
 #BatchNormalization(axis=-1)
@@ -58,71 +59,69 @@ model.add(Conv2D(32, kernel_size=(7, 7),
 model.add(Conv2D(32, 
                 padding='valid',                
                 kernel_size=(3,3), 
-                activation='selu',
-                kernel_initializer='glorot_uniform'))
+                activation='elu',
+                kernel_initializer='lecun_uniform'))
 '''
 
 #BatchNormalization(axis=-1)
-model.add(MaxPooling2D(pool_size=(5,5)))
+model.add(MaxPooling2D(pool_size=(3,3)))
 #model.add(Dropout(0.1))
-model.add(Conv2D(64, kernel_size=(5,5),
-                kernel_constraint=max_norm(3.),
+model.add(Conv2D(64, kernel_size=(3,3),
+                #kernel_constraint=max_norm(3),
                 activation='selu',
-                kernel_initializer='glorot_uniform'))
+                kernel_initializer='lecun_uniform'))
 
-model.add(Conv2D(64, kernel_size=(5,5),
-                kernel_constraint=max_norm(3.),
+model.add(Conv2D(64, kernel_size=(3,3),
+                #kernel_constraint=max_norm(3),
                 activation='selu',
-                kernel_initializer='glorot_uniform'))
+                kernel_initializer='lecun_uniform'))
 
 #model.add(Dropout(0.1))
 
 #BatchNormalization(axis=-1)
 model.add(Conv2D(64, 
                 padding='valid',                
+                #kernel_constraint=max_norm(3),
                 kernel_size=(3,3), 
-                kernel_constraint=max_norm(3.),
                 activation='selu',
-                kernel_initializer='glorot_uniform'))
+                kernel_initializer='lecun_uniform'))
 model.add(MaxPooling2D(pool_size=(3,3)))
 #model.add(Dropout(0.1))
 
 model.add(Conv2D(128, kernel_size=(3,3),
-                kernel_constraint=max_norm(3.),
-                padding='same',
+                #kernel_constraint=max_norm(3),
+                padding='valid',
                 activation='selu',
                 input_shape=input_shape,
-                kernel_initializer='glorot_uniform'))
+                kernel_initializer='lecun_uniform'))
 #model.add(MaxPooling2D(pool_size=(2,2)))
 #model.add(Dropout(0.1))
 
 #BatchNormalization(axis=-1)
-model.add(Conv2D(128, 
-                padding='same',                
-                kernel_size=(3,3), 
-                kernel_constraint=max_norm(3.),
-                activation='selu',
-                kernel_initializer='glorot_uniform'))
 model.add(MaxPooling2D(pool_size=(2,2)))
 
 model.add(Flatten())
 
-BatchNormalization()
+#BatchNormalization()
+#model.add(Dense(128, activation='elu', kernel_initializer='lecun_uniform'))
+#BatchNormalization()
+#model.add(Dense(1024, activation='elu', kernel_initializer='lecun_uniform'))
+#BatchNormalization()
 model.add(Dense(1024, 
             activation='selu', 
             #kernel_regularizer=l2(0.0001),
             #activity_regularizer=l2(0.0001), 
             kernel_initializer='lecun_uniform'))
-
-BatchNormalization()
+model.add(AlphaDropout(0.3))
+#BatchNormalization()
 model.add(Dense(512, 
             activation='selu',
             #kernel_regularizer=l2(0.0001),
             #activity_regularizer=l2(0.0001),  
-            kernel_initializer='glorot_uniform'))
-model.add(Dropout(0.5))
+            kernel_initializer='lecun_uniform'))
+model.add(AlphaDropout(0.3))
 
-model.add(Dense(num_classes, activation='softmax', kernel_initializer='glorot_uniform'))
+model.add(Dense(num_classes, activation='softmax', kernel_initializer='lecun_uniform'))
 
 model.compile(loss='categorical_crossentropy',
               optimizer=keras.optimizers.Adadelta(),
@@ -171,6 +170,21 @@ testGenerator = test_datagen.flow_from_directory(
 #testCb = TestCallback(epochs, testGenerator, batch_size, testSetSize)
 earlyStopping = EarlyStopping(monitor='val_loss', patience=3, verbose=1) 
 
+# Checkpoint to save the weights with the best validation accuracy.
+checkPoint = ModelCheckpoint('checkPointWeights.h5',
+            monitor='val_loss',
+            verbose=1,
+            save_best_only=True,
+            save_weights_only=True,
+            mode='auto')
+
+plateauCallback = ReduceLROnPlateau(monitor='loss',
+            factor=0.5,
+            patience=7,
+            min_lr=0.00005,
+            verbose=1,
+            cooldown=2)
+
 
 history = model.fit_generator(
             trainGenerator,
@@ -179,7 +193,13 @@ history = model.fit_generator(
             verbose=1, 
             validation_data=validationGenerator,
             validation_steps=valSetSize//batch_size,
-            callbacks=[earlyStopping, ])
+            callbacks=[earlyStopping, checkPoint, plateauCallback])
+
+# Get the predictions on the test set and calculate the F1-score
+y_pred = model.predict_generator(testGenerator, steps=testSetSize//batch_size, verbose=1)
+f1Score = f1_score(testGenerator.classes[:y_pred.shape[0]], np.argmax(y_pred, axis=1), average='micro')
+print('F1 score:: {}'.format(f1Score))
+
 
 print("--- %s seconds ---" % (time.time() - start_time))
 #print(testCb.score)
@@ -187,25 +207,25 @@ print("--- %s seconds ---" % (time.time() - start_time))
 # summarize history for accuracy
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])
-plt.plot(testCb.score[:,1])
+#plt.plot(testCb.score[:,1])
 plt.xlim(0, epochs)
 plt.xticks(np.arange(0, epochs+1, 5))
 plt.title('model accuracy')
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
-plt.legend(['train', 'validation', 'test'], loc='upper left')
+plt.legend(['train', 'validation'], loc='upper left')
 plt.show()
 
 # summarize history for loss
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
-plt.plot(testCb.score[:,0])
+#plt.plot(testCb.score[:,0])
 plt.xlim(0, epochs)
 plt.xticks(np.arange(0, epochs+1, 5))
 plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
-plt.legend(['train', 'validation','test'], loc='upper left')
+plt.legend(['train', 'validation'], loc='upper left')
 plt.show()
 
 model_json = model.to_json()

@@ -62,8 +62,8 @@ def imagePatchExtractor(image, file, city, imagepath, finepath, outpath):
 		while j < w:
 			# Check boundaries
 			if j > w or j > w-patchSize:
-				croppedImage = image[i:i+patchSize,w-patchSize::,:]
-				label = labelImage[i:i+patchSize,w-patchSize::]
+				croppedImage = image[i:i+patchSize,w-patchSize:w,:]
+				label = labelImage[i:i+patchSize,w-patchSize:w]
 			else:
 				croppedImage = image[i:i+patchSize,j:j+patchSize,:]
 				label = labelImage[i:i+patchSize,j:j+patchSize]
