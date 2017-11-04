@@ -25,23 +25,23 @@ finePattern = 'gtFine_labelTrainIds.png'
 #####################################################
 
 # Train set Paths
-trainImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/resized_train'
-outTrainImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/resized_train_'+str(patchSize)
+trainImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train_set'
+outTrainImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train_set_'+str(patchSize)
 
 # Validation set Paths
-valImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/resized_validation'
-outValImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/resized_validation_'+str(patchSize)
+valImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/validation_set'
+outValImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/validation_'+str(patchSize)
 
 # Test set Paths
-testImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/resized_test'
-outTestImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/resized_test_'+str(patchSize)
+testImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/refined_test'
+outTestImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/test_set_'+str(patchSize)
 
 ######################################################
 # Configure paths for gtFine labeled image set
 ######################################################
-trainFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/resized_train'
-valFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/resized_validation'
-testFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/resized_test'
+trainFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/train'
+valFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/val'
+testFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/refined_Test'
 
 
 
@@ -70,132 +70,132 @@ def imagePatchExtractor(imageSet, imagepath, finepath, outpath, mode):
 	yLabels = np.array([])
 	
 	#counter = 0
-	for city in sorted(os.listdir(imagepath)):
-		for file in sorted(os.listdir(imagepath+'/'+city)):
-			print counter
-			if imageSet is not None and counter == imageSet: # Extact patches from a number of frames
-				if mode == 'Train':
-					#print '3'
-					if not x_trainHandler.closed and not y_trainHandler.closed:
-						#print '4'
+	#for city in sorted(os.listdir(imagepath)):
+	for file in sorted(os.listdir(imagepath)):
+		print counter
+		if imageSet is not None and counter == imageSet: # Extact patches from a number of frames
+			if mode == 'Train':
+				#print '3'
+				if not x_trainHandler.closed and not y_trainHandler.closed:
+					#print '4'
+					np.save(x_trainHandler, imArray)
+					np.save(y_trainHandler, yLabels)
+					x_trainHandler.close()
+					y_trainHandler.close() 
+					imArray = np.array([])
+					yLabels = np.array([])
+			elif mode == 'Val':
+				if not x_valHandler.closed and not y_valHandler.closed:
+					np.save(x_valHandler, imArray)
+					np.save(y_valHandler, yLabels)
+					x_valHandler.close()
+					y_valHandler.close() 
+					imArray = np.array([])
+					yLabels = np.array([])
+			elif mode == 'Test':
+				if not x_testHandler.closed and not y_testHandler.closed:
+					np.save(x_testHandler, imArray)
+					np.save(y_testHandler, yLabels)
+					x_testHandler.close()
+					y_testHandler.close() 
+			return
+
+		image = io.imread(imagepath+'/'+file)
+		h, w, c  = image.shape
+		# load the annoated image
+		labelImage = io.imread(finepath+'/'+re.findall('\w+_\d+_\d+_', file)[0]+finePattern)
+		counter += 1
+		
+		i = 0
+		j = 0
+		#print '2'
+		while i < h :
+			while j < w:
+				# Check boundaries
+				if j > w or j > w-patchSize:
+					croppedImage = image[i:i+patchSize,(w-patchSize):,:]
+					label = labelImage[i:i+patchSize,(w-patchSize):]
+				else:
+					croppedImage = image[i:i+patchSize,j:j+patchSize,:]
+					label = labelImage[i:i+patchSize,j:j+patchSize]
+				
+				centerLabel = label[patchSize/2, patchSize/2]
+				if centerLabel == 255:
+					j += patchSize
+					#counter += 1
+					continue
+				#try:
+					#rename = file.replace(rawImagePattern, '{0:07d}'.format(counter) +'_'+rawImagePattern)
+				im = np.array(croppedImage)
+				if imArray.size == patchSize*patchSize*c:
+					imArray = np.stack((imArray, im), axis=0)
+					yLabels = np.append(yLabels, centerLabel)
+				elif imArray.size == 0:
+					imArray = im
+					yLabels = np.append(yLabels, centerLabel)
+				else:
+					imArray = np.insert(imArray, index, im, axis=0)
+					yLabels = np.append(yLabels, centerLabel)			
+
+				if index == offset-1:
+					if mode == 'Train':
 						np.save(x_trainHandler, imArray)
 						np.save(y_trainHandler, yLabels)
+						fileIndex += 1
 						x_trainHandler.close()
-						y_trainHandler.close() 
+						y_trainHandler.close()
+						# Reset the arrays for refill
 						imArray = np.array([])
 						yLabels = np.array([])
-				elif mode == 'Val':
-					if not x_valHandler.closed and not y_valHandler.closed:
+
+						x_trainHandler = open(outpath+'/'+'X_train_set_'+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+						y_trainHandler = open(outpath+'/'+'Y_train_set_'+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+						index = 0
+						continue
+					elif mode == 'Val':
+					#if index == offset-1:
 						np.save(x_valHandler, imArray)
 						np.save(y_valHandler, yLabels)
 						x_valHandler.close()
-						y_valHandler.close() 
+						y_valHandler.close()
+						# Reset the arrays for refill
 						imArray = np.array([])
 						yLabels = np.array([])
-				elif mode == 'Test':
-					if not x_testHandler.closed and not y_testHandler.closed:
+
+						fileIndex += 1
+						x_valHandler = open(outpath+'/'+'X_val_set_'+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+						y_valHandler = open(outpath+'/'+'Y_val_set_'+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+						index = 0
+						continue
+					elif mode == 'Test':
+				#if index == offset-1:
 						np.save(x_testHandler, imArray)
 						np.save(y_testHandler, yLabels)
+						fileIndex += 1
 						x_testHandler.close()
-						y_testHandler.close() 
-				return
+						y_testHandler.close()
+						# Reset the arrays for refill
+						imArray = np.array([])
+						yLabels = np.array([])
 
-			image = io.imread(imagepath+'/'+city+'/'+file)
-			h, w, c  = image.shape
-			# load the annoated image
-			labelImage = io.imread(finepath+'/'+city+'/'+re.findall('\w+_\d+_\d+_', file)[0]+finePattern)
-			counter += 1
-			
-			i = 0
-			j = 0
-			#print '2'
-			while i < h :
-				while j < w:
-					# Check boundaries
-					if j > w or j > w-patchSize:
-						croppedImage = image[i:i+patchSize,(w-patchSize):,:]
-						label = labelImage[i:i+patchSize,(w-patchSize):]
-					else:
-						croppedImage = image[i:i+patchSize,j:j+patchSize,:]
-						label = labelImage[i:i+patchSize,j:j+patchSize]
-					
-					centerLabel = label[patchSize/2, patchSize/2]
-					if centerLabel == 255:
-						j += patchSize
-						#counter += 1
+						x_testHandler = open(outpath+'/'+'X_test_set_'+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+						y_testHandler = open(outpath+'/'+'Y_test_set_'+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+						index = 0
 						continue
-					#try:
-						#rename = file.replace(rawImagePattern, '{0:07d}'.format(counter) +'_'+rawImagePattern)
-					im = np.array(croppedImage)
-					if imArray.size == patchSize*patchSize*c:
-						imArray = np.stack((imArray, im), axis=0)
-						yLabels = np.append(yLabels, centerLabel)
-					elif imArray.size == 0:
-						imArray = im
-						yLabels = np.append(yLabels, centerLabel)
-					else:
-						imArray = np.insert(imArray, index, im, axis=0)
-						yLabels = np.append(yLabels, centerLabel)			
-
-					if index == offset-1:
-						if mode == 'Train':
-							np.save(x_trainHandler, imArray)
-							np.save(y_trainHandler, yLabels)
-							fileIndex += 1
-							x_trainHandler.close()
-							y_trainHandler.close()
-							# Reset the arrays for refill
-							imArray = np.array([])
-							yLabels = np.array([])
-
-							x_trainHandler = open(outpath+'/'+'X_train_set_'+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
-							y_trainHandler = open(outpath+'/'+'Y_train_set_'+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
-							index = 0
-							continue
-						elif mode == 'Val':
-						#if index == offset-1:
-							np.save(x_valHandler, imArray)
-							np.save(y_valHandler, yLabels)
-							x_valHandler.close()
-							y_valHandler.close()
-							# Reset the arrays for refill
-							imArray = np.array([])
-							yLabels = np.array([])
-
-							fileIndex += 1
-							x_valHandler = open(outpath+'/'+'X_val_set_'+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
-							y_valHandler = open(outpath+'/'+'Y_val_set_'+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
-							index = 0
-							continue
-						elif mode == 'Test':
-					#if index == offset-1:
-							np.save(x_testHandler, imArray)
-							np.save(y_testHandler, yLabels)
-							fileIndex += 1
-							x_testHandler.close()
-							y_testHandler.close()
-							# Reset the arrays for refill
-							imArray = np.array([])
-							yLabels = np.array([])
-
-							x_testHandler = open(outpath+'/'+'X_test_set_'+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
-							y_testHandler = open(outpath+'/'+'Y_test_set_'+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
-							index = 0
-							continue
-						#io.imsave(outpath+'/'+ labels.listLabels[centerLabel]+'/'+rename, croppedImage)
-					#except Exception as e:
-					#	print centerLabel
-					#	raise e
-					#	sys.exit(-1)
-					index +=1
-					j += patchSize
-					#counter += 1
-				
-				i += patchSize
-				# Leave the last row pixels (max patchsize pixels abandoned)
-				if i > h-patchSize:
-					break
-				j = 0
+					#io.imsave(outpath+'/'+ labels.listLabels[centerLabel]+'/'+rename, croppedImage)
+				#except Exception as e:
+				#	print centerLabel
+				#	raise e
+				#	sys.exit(-1)
+				index +=1
+				j += patchSize
+				#counter += 1
+			
+			i += patchSize
+			# Leave the last row pixels (max patchsize pixels abandoned)
+			if i > h-patchSize:
+				break
+			j = 0
 	# Check if the file handlers are closed with the residual samples
 	if mode == 'Train':
 		if not x_trainHandler.closed and not y_trainHandler.closed:
@@ -247,38 +247,13 @@ def main():
 	# Extract Raw images
 	print('Train set...')
 	imagePatchExtractor(trainImageSet, trainImagePath, trainFinePath, outTrainImgPath, mode='Train')
-	'''
-	counter = 0
-	for city in sorted(os.listdir(trainImagePath)):
-		for file in sorted(os.listdir(trainImagePath+'/'+city)):
-			if trainImageSet is not None and counter == trainImageSet:
-				break
-			image = io.imread(trainImagePath+'/'+city+'/'+file)
-			counter += 1
-	'''
+	
 	print('Validation Set...')
 	imagePatchExtractor(valImageSet, valImagePath, valFinePath, outValImgPath, mode='Val')
-	'''
-	counter = 0
-	for city in sorted(os.listdir(valImagePath)):
-		for file in sorted(os.listdir(valImagePath+'/'+city)):
-			if valImageSet is not None and counter == valImageSet:
-				break
-			image = io.imread(valImagePath+'/'+city+'/'+file)
-			counter += 1
-	'''
+	
 	print('Test set...')
 	imagePatchExtractor(testImageSet, testImagePath, testFinePath, outTestImgPath, mode='Test')
-	'''
-	counter = 0
-	for city in sorted(os.listdir(testImagePath)):
-		for file in sorted(os.listdir(testImagePath+'/'+city)):
-			if testImageSet is not None and counter == testImageSet:
-				break
-			image = io.imread(testImagePath+'/'+city+'/'+file)
-			#image = image/255.0
-			counter += 1
-	'''
+
 if __name__ == '__main__':
 	start_time = time.time()
 	main()
