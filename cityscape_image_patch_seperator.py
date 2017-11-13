@@ -12,11 +12,12 @@ import time
 
 # How many images you want to cut into patches
 # set to None to extract all of them
-trainImageSet = None
-valImageSet = None
-testImageSet = None
+trainImageSet = 40
+valImageSet = 20
+testImageSet = 10
+offset = 99999999 # how many samples per file
 
-patchSize = 30
+patchSize = 40
 rawImagePattern = 'leftImg8bit.png'
 finePattern = 'gtFine_labelTrainIds.png'
 
@@ -25,23 +26,23 @@ finePattern = 'gtFine_labelTrainIds.png'
 #####################################################
 
 # Train set Paths
-trainImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train'
+trainImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/resized_train'
 outTrainImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train_set_'+str(patchSize)
 
 # Validation set Paths
-valImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/val'
+valImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/resized_validation'
 outValImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/validation_set_'+str(patchSize)
 
 # Test set Paths
-testImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/refined_Test'
+testImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/resized_test'
 outTestImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/test_set_'+str(patchSize)
 
 ######################################################
 # Configure paths for gtFine labeled image set
 ######################################################
-trainFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/train'
-valFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/val'
-testFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/refined_Test'
+trainFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/resized_train'
+valFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/resized_validation'
+testFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine/resized_test'
 
 
 
@@ -54,7 +55,7 @@ testFinePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtFine
 def imagePatchExtractor(imageSet, imagepath, finepath, outpath, mode):
 	counter = 0
 	index = 0
-	offset = 3000 # how many samples per file
+	
 	fileIndex = 1
 	if mode == 'Train':
 		x_trainHandler = open(outTrainImgPath+'/'+'X_train_set_'+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')

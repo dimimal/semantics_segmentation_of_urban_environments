@@ -61,7 +61,7 @@ def downSample(image, annotImage, file, outPath, outAnnot):
 Main Function
 '''
 def main():
-	
+	'''
 	print('Train extraction....')
 	counter = 0
 	for city in sorted(os.listdir(trainImagePath)):
@@ -85,7 +85,7 @@ def main():
 			downSample(image, labelImage, file, outValImgPath, outValFinePath)
 			print('Validation:: ', counter)
 			counter += 1
-	
+	'''
 	print('Testing extraction....')
 	counter = 0
 	for city in sorted(os.listdir(testImagePath)):
