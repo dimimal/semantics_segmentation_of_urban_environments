@@ -52,8 +52,8 @@ downSample:
 				outAnnot: The path of the resized annotated image
 '''	
 def downSample(image, annotImage, file, outPath, outAnnot):
-	resizedImage = cv.resize(image, dsize=(image.shape[0]/2,image.shape[0]/4))
-	resizedAnnotImage = cv.resize(annotImage, dsize=(annotImage.shape[0]/2,annotImage.shape[0]/4), interpolation=cv.INTER_NEAREST)
+	resizedImage = cv.resize(image, dsize=(image.shape[0]/2,image.shape[1]/4))
+	resizedAnnotImage = cv.resize(annotImage, dsize=(annotImage.shape[0]/2,annotImage.shape[1]/4), interpolation=cv.INTER_NEAREST)
 	cv.imwrite(outPath+'/'+file, resizedImage)
 	cv.imwrite(outAnnot+'/'+re.findall('\w+_\d+_\d+_', file)[0]+finePattern, resizedAnnotImage)
 
@@ -73,7 +73,7 @@ def main():
 			downSample(image, labelImage, file, outTrainImgPath, outTrainFinePath)
 			print('Train:: ', counter)
 			counter += 1
-	
+	'''
 	print('Validation extraction....')
 	counter = 0
 	for city in sorted(os.listdir(valImagePath)):
@@ -85,7 +85,6 @@ def main():
 			downSample(image, labelImage, file, outValImgPath, outValFinePath)
 			print('Validation:: ', counter)
 			counter += 1
-	'''
 	print('Testing extraction....')
 	counter = 0
 	for city in sorted(os.listdir(testImagePath)):
@@ -98,6 +97,7 @@ def main():
 			#image = image/255.0
 			print('Test:: ', counter)
 			counter += 1
+	
 
 if __name__ == '__main__':
 	start_time = time.time()
