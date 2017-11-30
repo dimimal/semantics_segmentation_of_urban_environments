@@ -33,10 +33,9 @@ except:
 ## Helper classes
 #################
 
-# annotation helper
-sys.path.append( os.path.normpath( os.path.join( os.path.dirname( __file__ ) , '..' , 'helpers' ) ) )
-from annotation import Annotation
-from labels     import name2label, assureSingleInstanceName
+# Import relative modules
+from helpers.annotation import Annotation
+from helpers.labels import name2label, assureSingleInstanceName
 
 
 #################
@@ -531,12 +530,12 @@ class CityscapesViewer(QtGui.QMainWindow):
             return
         if not self.showDisparity:
             return
-        '''
+        
         filename = self.getDisparityFilename()
         if not filename:
             self.dispImg = None
             return
-        '''
+        
         # If we have everything and the filename did not change, then we are good
         if self.dispImg and filename == self.currentDispFile:
             return

@@ -17,15 +17,11 @@ from keras.regularizers import l1,l2
 from keras.constraints import MaxNorm
 from keras import backend as K
 from keras.activations import softmax
-from keras.losses import categorical_crossentropy
+#from keras.losses import categorical_crossentropy
 from weighted_categorical_crossentropy import weighted_categorical_crossentropy
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, CSVLogger
 from dataGenerator import DataGenerator
 from sklearn.metrics import classification_report, confusion_matrix, jaccard_similarity_score
-from mlxtend.plotting import plot_confusion_matrix
-#from vis.visualization import visualize_cam
-from metrics import sparse_accuracy_ignoring_last_label
-from loss_function import softmax_sparse_crossentropy_ignoring_last_label
 
 debug_mode = False
 patchSize = 16
@@ -36,12 +32,12 @@ valFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8b
 testFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_test_set_{}'.format(patchSize)
 
 # ============================ Declare the paths for the parameters of our network ====================================================
-weightsPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/Weights_dense_{}.h5'.format(patchSize)
-checkpointPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/checkpoint_Weights_dense_{}.h5'.format(patchSize)
-lrCurvesPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/dense_lrCurves_1_{}.csv'.format(patchSize)
-modelParamPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/model_params_{}.json'.format(patchSize)
-modelPicturePath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/model_dense_{}.png'.format(patchSize)
-reportPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/report_dense_{}.txt'.format(patchSize)
+weightsPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/Weights_dense_2_{}.h5'.format(patchSize)
+checkpointPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/checkpoint_Weights_dense_2_{}.h5'.format(patchSize)
+lrCurvesPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/dense_lrCurves_2_{}.csv'.format(patchSize)
+modelParamPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/model_params_2_{}.json'.format(patchSize)
+modelPicturePath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/model_dense_2_{}.png'.format(patchSize)
+reportPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/report_dense_2_{}.txt'.format(patchSize)
 
 np.random.seed(25)
 
@@ -98,27 +94,37 @@ def fcn_16(patchSize, channels):
     input_shape = (patchSize, patchSize, channels)        
     inputs = Input(shape=input_shape)
     # Block 1
-    x = Conv2D(16, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_1_16')(inputs)
+    x = AtrousConvolution2D(16, (3,3), atrous_rate=(2,2) ,padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_1_16')(inputs)
     x = Conv2D(16, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_2_16')(x)
     x = Conv2D(16, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_3_16')(x)
     # Block 2
-    x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_1_32')(x)
-    x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_2_32')(x)
-    x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_3_32')(x)
+    x = AtrousConvolution2D(32, (3,3), atrous_rate=(3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_4_32')(x)
+    x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_5_32')(x)
+    x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_6_32')(x)
     # Block 3
-    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_1_64')(x)
-    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_2_64')(x)
+    x = AtrousConvolution2D(64, (3,3), atrous_rate=(4,4), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_7_64')(x)
+    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_8_64')(x)
     x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_3_64')(x)
-    x = MaxPooling2D(pool_size=(2, 2), name='pool_1')(x)
+
+    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_9_128')(x)
+    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_10_128')(x)
+    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_11_128')(x)
+    x = AlphaDropout(0.1)(x)
+    #x = MaxPooling2D(pool_size=(2, 2), name='pool_1')(x)
     # Block 4
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
+    #x = Deconvolution2D(128, (5,5), activation='selu', kernel_initializer='lecun_normal', name='Deconv_1_128')(x)
+    #x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_12_128')(x)
+    #x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_13_128')(x)
     # Block 5 (Deconv Block)
-    x = Deconvolution2D(num_classes, (3,3), activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Deconvolution2D(num_classes, (3,3), activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Deconvolution2D(num_classes, (3,3), activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Deconvolution2D(num_classes, (3,3), kernel_initializer='lecun_normal', use_bias=False)(x)
+    #x = Deconvolution2D(64, (3,3), activation='selu', kernel_initializer='lecun_normal', name='Deconv_2_64')(x)
+    x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_14_64')(x)
+    x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_15_64')(x)
+    x = AlphaDropout(0.1)(x)
+    #x = Deconvolution2D(32, (3,3), activation='selu', kernel_initializer='lecun_normal', name='Deconv_3_32')(x)
+    #x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_16_32')(x)
+    #x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_17_32')(x)
+    #
+    x = Conv2D(num_classes, (1,1), kernel_initializer='lecun_normal', name='out_conv')(x)
 
     predictions = core.Activation('softmax')(x)
 
@@ -139,7 +145,7 @@ def fcn_32(patchSize, channels):
     inputs = Input(shape=input_shape)
 
     x = Conv2D(16, (3,3), padding='same', kernel_initializer='lecun_normal')(inputs)
-    x = BatchNormalization(axis=-1)(x)
+    #x = BatchNormalization(axis=-1)(x)
     x = Activation('selu')(x)
     #x = AlphaDropout(0.2)(x)
     #
@@ -304,52 +310,33 @@ def fcn_64(patchSize, channels):
 
     x = Conv2D(64, (5,5), dilation_rate=(3, 3), activation='selu', padding='same', kernel_initializer='lecun_normal')(inputs)
     x = Conv2D(64, (5,5), dilation_rate=(3, 3), activation='selu', padding='same', kernel_initializer='lecun_normal')(x)
-    x = Activation('selu')(x)
-    #
     x = MaxPooling2D(pool_size=(2, 2))(x)
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Activation('selu')(x)
-    #x = AlphaDropout(0.2)(x)
     #
     x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Activation('selu')(x)
-    #
+    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     x = MaxPooling2D(pool_size=(2, 2))(x)
-    x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Activation('selu')(x)
     #
     x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    #x = BatchNormalization(axis=-1)(x)
-    x = Activation('selu')(x)
-    #
+    x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     x = MaxPooling2D(pool_size=(2, 2))(x)
-    
+    #    
     x = UpSampling2D()(x)
     x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    #x = BatchNormalization(axis=-1)(x)
-    x = Activation('selu')(x)
-    #
     x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    #x = BatchNormalization(axis=-1)(x)
-    x = Activation('selu')(x)
     #
     x = UpSampling2D()(x)
     x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    #
     x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     #
     x = UpSampling2D()(x)
     x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    #
     x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     #
     x = AlphaDropout(0.1)(x)
     #
     x = Conv2D(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal')(x)
 
-    y = core.Reshape((patchSize,patchSize,num_classes))(x)
-
-    predictions = core.Activation('softmax')(y)
+    predictions = core.Activation('softmax')(x)
 
     model = Model(inputs=inputs, outputs=predictions)
 
@@ -368,20 +355,20 @@ def fcn_512(patchSize, channels):
     input_shape = (patchSize, patchSize, channels)        
     inputs = Input(shape=input_shape)
     # Block 1
-    x = Conv2D(32,  (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(inputs)
-    x = Conv2D(32,  (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = MaxPooling2D(pool_size=(2, 2), strides=(2,2))(x)
+    x = AtrousConvolution2D(64, (5,5), atrous_rate=(2,2), padding='same', activation='selu', kernel_initializer='lecun_normal')(inputs)
+    x = AtrousConvolution2D(64,  (5,5), atrous_rate=(2,2), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
     #
-    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = MaxPooling2D(pool_size=(2, 2), strides=(2,2))(x)
-    #
-    x = Conv2D(128, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2D(128, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal')(x)
+    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
+    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     x = MaxPooling2D(pool_size=(2, 2), strides=(2,2))(x)
     #
     x = Conv2D(256, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2D(256, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal')(x)    
+    x = Conv2D(256, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal')(x)
+    x = MaxPooling2D(pool_size=(2, 2), strides=(2,2))(x)
+    #
+    x = Conv2D(512, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal')(x)
+    x = Conv2D(512, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal')(x)    
     x = MaxPooling2D(pool_size=(2, 2), strides=(2,2))(x)
     #
     x = AtrousConvolution2D(512, (3,3), atrous_rate=(2,2), activation='selu', kernel_initializer='lecun_normal')(x)
@@ -466,18 +453,57 @@ def plot_results(history, y_true, y_pred, score):
     # Compute mean IoU
     cfMatrix = confusion_matrix(y_true, y_pred)
     labelIou, meanIoUfromcf = computeMeanIou(cfMatrix)
-    fig, ax = plot_confusion_matrix(conf_mat=cfMatrix, figsize=(5, 5))
-    # Write report to txt
-    with open(reportPath,'w') as fileObj:
-        fileObj.write(report)
-        fileObj.write(meanIoU)
-        fileObj.write(meanIoUfromcf)
     
     print('----- Mean IoU ----- ')
     print('------ %s -----------'%(str(meanIoU)))
     print('---- Manual mean Iou from CF ------')
     print('------ %s -----------'%(str(meanIoUfromcf)))
+
+    # Remove the last label
+    cfMatrix = np.delete(cfMatrix, cfMatrix.shape[0]-1, axis=0)
+    cfMatrix = np.delete(cfMatrix, cfMatrix.shape[0]-1, axis=1)   
+    plt.figure()
+    fig, ax = plot_confusion_matrix(cfMatrix, labels.listLabels, normalize=True)
     plt.show()
+
+    # Write report to txt
+    with open(reportPath,'w') as fileObj:
+        fileObj.write(report)
+        fileObj.write(str(meanIoU))
+        fileObj.write(str(meanIoUfromcf))
+
+def plot_confusion_matrix(cm, 
+                          classes,
+                          normalize=True,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
 
 def save_model_params(model):
     model_json = model.to_json()
