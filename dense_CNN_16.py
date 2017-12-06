@@ -46,7 +46,7 @@ np.random.seed(25)
 
 batch_size = 16
 num_classes = 20   
-epochs = 60
+epochs = 5
 img_rows, img_cols = patchSize, patchSize
 input_shape=(img_rows, img_cols, channels)
 
