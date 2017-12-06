@@ -468,7 +468,16 @@ def main():
     if patchSize == 16:
         model = fcn_16(patchSize, channels)
     elif patchSize == 32:
-        model = fcn_32(patchSize, channels)
+        #model = fcn_32(patchSize, channels)
+        json_file = open(modelParamPath, 'r')
+        loaded_model_json = json_file.read()
+        json_file.close()
+        model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
+        model.load_weights(checkpointPath)
+        model.summary()
+        model.compile(loss=weighted_categorical_crossentropy(weights) ,
+                  optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
+                  metrics=['accuracy'])
     elif patchSize == 64:
         model = fcn_64(patchSize, channels)
     elif patchSize == 128:
