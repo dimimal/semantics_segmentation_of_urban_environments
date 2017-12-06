@@ -12,10 +12,10 @@ import re
 trainImageSet = None
 valImageSet = None
 testImageSet = None
-offset = 40000 # how many samples per file
+offset = 3000 # how many samples per file
 mode = 'Patch'
-patchSize = 32
-img_rows, img_cols = 512, 512
+patchSize = 128
+img_rows, img_cols = patchSize, patchSize
 rawImagePattern = 'leftImg8bit.png'
 finePattern = 'gtFine_labelTrainIds.png'
 
@@ -100,14 +100,16 @@ def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern, mode):
 					#print(label.shape)
 					im = np.array(croppedImage)
 					imLabels = np.array(label)
-					imLabels = np.clip(imLabels, 0, 19)
-					#print(imLabels.shape)
+					imLabels = np.clip(imLabels, 0, 19).reshape(patchSize*patchSize)
 					if imArray.size == 0:
 						imArray = im
 						yLabels = imLabels
-					else:
-						imArray = np.concatenate((imArray, im))
-						yLabels = np.concatenate((yLabels, imLabels))			
+					elif imArray.size == patchSize*patchSize*c:
+						imArray = np.stack((imArray, im), axis=0)
+						yLabels = np.stack((yLabels, imLabels), axis=0)
+					else:	
+						imArray = np.insert(imArray, index, im, axis=0)
+						yLabels = np.insert(yLabels, index, imLabels, axis=0)			
 
 					if index == offset-1:
 						np.save(x_Handler, imArray)
@@ -151,14 +153,17 @@ def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern, mode):
 			labelImage = io.imread(finepath+'/'+re.findall('\w+_\d+_\d+_', file)[0]+finePattern)
 			im = np.array(image)
 			imLabels = np.array(labelImage)
-			imLabels = np.clip(imLabels, 0, 19)
+			imLabels = np.clip(imLabels, 0, 19).reshape(img_rows*img_cols)
 			
 			if imArray.size == 0:
 				imArray = im
 				yLabels = imLabels
-			else:
-				imArray = np.concatenate((imArray, im))
-				yLabels = np.concatenate((yLabels, imLabels))
+			elif imArray.size == patchSize*patchSize*c:
+				imArray = np.stack((imArray, im), axis=0)
+				yLabels = np.stack((yLabels, imLabels), axis=0)
+			else:	
+				imArray = np.insert(imArray, index, im, axis=0)
+				yLabels = np.insert(yLabels, index, imLabels, axis=0)	
 			counter += 1
 			
 	# Check if the file handlers are closed with the residual samples
