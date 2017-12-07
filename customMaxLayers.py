@@ -1,16 +1,16 @@
 from mpool import m_maxpool2d, m_maxpool3d
 from keras.engine.topology import Layer as Layer_inh
 from keras import backend as K
-from theano import tensor as T
+#from theano import tensor as T
 from keras.layers.pooling import _Pooling2D, _Pooling3D
-
+import tensorflow as tf
 
 class MemoMaxPooling2D(_Pooling2D):
     def __init__(self, pool_size=(2, 2), strides=None, padding='valid',
                  dim_ordering=K.image_data_format(), **kwargs):
+        print dim_ordering
         super(MemoMaxPooling2D, self).__init__(pool_size, strides, padding,
                                                dim_ordering, **kwargs)
-        #print dim_ordering
 
     def _pooling_function(self, inputs, pool_size, strides,
                           padding, dim_ordering):
@@ -53,12 +53,16 @@ class MemoUpSampling2D(Layer_inh):
             img = K.resize_images(x, self.size[0], self.size[1], self.dim_ordering)
             padded = K.zeros((img.shape[0], img.shape[1], self.shape[0], self.shape[1]))
             padded = T.set_subtensor(padded[:,:img.shape[1], :img.shape[2], :], img)
+            #padded = tf.scatter_nd(indices, updates, shape)
             return K.switch(self.ind, padded, K.zeros_like(padded))
         elif self.dim_ordering=='channels_first':
+            '''
             img = K.resize_images(x, self.size[0], self.size[1], self.dim_ordering)
             padded = T.zeros((img.shape[0], img.shape[1], self.shape[0], self.shape[1]))
             padded = T.set_subtensor(padded[:, :, :img.shape[2], :img.shape[3]], img)
             return T.switch(self.ind, padded, T.zeros_like(padded))
+            '''
+            raise Exception('Channels_first is not supported')
 
     def get_config(self):
         config = {'size': self.size}
