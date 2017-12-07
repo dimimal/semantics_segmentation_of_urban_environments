@@ -61,13 +61,13 @@ class CityscapesViewer(QtGui.QMainWindow):
         # The filename of the labels we currently working on
         self.currentLabelFile  = ""
         # The path of the images of the currently loaded city
-        self.city              = ""
+        #self.city              = ""
         # The name of the currently loaded city
-        self.cityName          = ""
+        #self.cityName          = ""
         # The path of the labels. In this folder we expect a folder for each city
         # Within these city folders we expect the label with a filename matching
         # the images, except for the extension
-        self.labelPath         = ""
+        #self.labelPath         = ""
         # The transparency of the labels over the image
         self.transp            = 0.5
         # The zoom toggle
@@ -94,13 +94,13 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Filenames of all images in current city
         self.images            = []
         # Image extension
-        self.imageExt          = "_leftImg8bit.png"
+        #self.imageExt          = "_leftImg8bit.png"
         # Ground truth extension
-        self.gtExt             = "_gt*_polygons.json"
+        #self.gtExt             = "_gt*_polygons.json"
         # Current image as QImage
         self.image             = QtGui.QImage()
         # Index of the current image within the city folder
-        self.idx               = 0
+        #self.idx               = 0
         # All annotated objects in current image, i.e. list of labelObject
         self.annotation        = []
         # The current object the mouse points to. It's index in self.labels
@@ -161,7 +161,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.initUI()
 
         # If we already know a city from the saved config -> load it
-        self.loadCity()
+        #self.loadCity()
         self.imageChanged()
 
     # Destructor
@@ -179,10 +179,11 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Loading a new city
         loadAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'open.png' )), '&Tools', self)
         loadAction.setShortcuts(['o'])
-        self.setTip( loadAction, 'Open city' )
-        loadAction.triggered.connect( self.getCityFromUser )
+        #self.setTip( loadAction, 'Open city' )
+        #loadAction.triggered.connect( self.getCityFromUser )
         self.toolbar.addAction(loadAction)
 
+        '''
         # Open previous image
         backAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'back.png')), '&Tools', self)
         backAction.setShortcut('left')
@@ -190,7 +191,6 @@ class CityscapesViewer(QtGui.QMainWindow):
         backAction.triggered.connect( self.prevImage )
         self.toolbar.addAction(backAction)
         self.actImageNotFirst.append(backAction)
-
         # Open next image
         nextAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'next.png')), '&Tools', self)
         nextAction.setShortcut('right')
@@ -198,6 +198,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         nextAction.triggered.connect( self.nextImage )
         self.toolbar.addAction(nextAction)
         self.actImageNotLast.append(nextAction)
+        '''
 
         # Play
         playAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'play.png')), '&Tools', self)
@@ -209,7 +210,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.toolbar.addAction(playAction)
         self.actImageNotLast.append(playAction)
         self.playAction = playAction
-
+        
         # Select image
         selImageAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'shuffle.png' )), '&Tools', self)
         selImageAction.setShortcut('i')
@@ -288,7 +289,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.applicationTitle = 'Cityscapes Viewer v1.0'
         self.setWindowTitle(self.applicationTitle)
         self.displayHelpMessage()
-        self.getCityFromUser()
+        #self.getCityFromUser()
         # And show the application
         self.show()
 
@@ -317,6 +318,7 @@ class CityscapesViewer(QtGui.QMainWindow):
     # Load its labels
     # Update the mouse selection
     # View
+    '''
     def nextImage(self):
         if not self.images:
             return
@@ -339,7 +341,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         if self.playState:
             QtCore.QTimer.singleShot(0, self.nextImage)
 
-
+    '''
     # Switch to a selected image of the file list
     # Ask the user for an image
     # Load the image
@@ -435,9 +437,9 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Load the first image
         self.loadImage()
         # Load its labels if available
-        self.loadLabels()
+        #self.loadLabels()
         # Load disparities if available
-        self.loadDisparities()
+        #self.loadDisparities()
         # Update the object the mouse points to
         self.updateMouseObject()
         # Update the GUI
@@ -446,7 +448,7 @@ class CityscapesViewer(QtGui.QMainWindow):
     #############################
     ## File I/O
     #############################
-
+    '''
     # Load the currently selected city if possible
     def loadCity(self):
         # Search for all *.pngs to get the image list
@@ -458,7 +460,7 @@ class CityscapesViewer(QtGui.QMainWindow):
                 self.idx = self.images.index(self.currentFile)
             else:
                 self.idx = 0
-
+    '''
     # Load the currently selected image
     # Does only load if not previously loaded
     # Does not refresh the GUI
@@ -522,7 +524,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Restore the message
         self.statusBar().showMessage( restoreMessage )
 
-
+    '''
     # Load the disparity map from file
     # Only loads if they exist
     def loadDisparities(self):
@@ -577,7 +579,7 @@ class CityscapesViewer(QtGui.QMainWindow):
 
         # Restore the message
         self.statusBar().showMessage( restoreMessage )
-
+    '''
     #############################
     ## Drawing
     #############################
@@ -666,14 +668,14 @@ class CityscapesViewer(QtGui.QMainWindow):
         qp.drawImage(QtCore.QRect( self.xoff, self.yoff, self.w, self.h ), self.image)
         # Restore the saved setting from the stack
         qp.restore()
-
+    '''
     def getPolygon(self, obj):
         poly = QtGui.QPolygonF()
         for pt in obj.polygon:
             point = QtCore.QPointF(pt.x,pt.y)
             poly.append( point )
         return poly
-
+    '''
     # Draw the labels in the given QPainter qp
     # optionally provide a list of labels to ignore
     def drawLabels(self, qp, ignore = []):
@@ -748,7 +750,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Define transparency
         qp.setOpacity(self.transp)
         # Draw the overlay image
-        qp.drawImage(self.xoff,self.yoff,overlay)
+        qp.drawImage(self.xoff, self.yoff, overlay)
         # Restore settings
         qp.restore()
 
@@ -843,9 +845,9 @@ class CityscapesViewer(QtGui.QMainWindow):
 
         # Show the zoom image
         qp.save()
-        qp.drawImage(view,self.image,sel)
+        qp.drawImage(view,self.image,sel) # Original Image
         qp.setOpacity(self.transp)
-        qp.drawImage(view,overlay_scaled,sel)
+        qp.drawImage(view,overlay_scaled,sel) # Label Image
         qp.restore()
 
     # Draw disparities
@@ -963,7 +965,7 @@ class CityscapesViewer(QtGui.QMainWindow):
     def clearAnnotation(self):
         self.annotation = None
         self.currentLabelFile = ""
-
+    '''
     def getCityFromUser(self):
         # Reset the status bar to this message when leaving
         restoreMessage = self.statusBar().currentMessage()
@@ -1027,8 +1029,8 @@ class CityscapesViewer(QtGui.QMainWindow):
                 sys.exit()
 
         return
-
-
+    '''
+    '''
     # Determine if the given candidate for a label path makes sense
     def isLabelPathValid(self,labelPath):
         return os.path.isdir(labelPath)
@@ -1055,7 +1057,6 @@ class CityscapesViewer(QtGui.QMainWindow):
             return ""
         filename = os.path.normpath(search[0])
         return filename
-
     # Get the filename where to load disparities
     # Returns empty string if not possible
     def getDisparityFilename( self ):
@@ -1075,6 +1076,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         #filename = os.path.join( self.dispPath , filename )
         filename = os.path.normpath(filename)
         return filename
+    '''
 
     # Disable the popup menu on right click
     def createPopupMenu(self):
