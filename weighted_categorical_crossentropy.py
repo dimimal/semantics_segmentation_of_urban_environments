@@ -4,6 +4,8 @@ A weighted version of categorical_crossentropy for keras (2.0.6). This lets you 
 @author: wassname
 """
 from keras import backend as K
+import tensorflow as tf
+
 
 def weighted_categorical_crossentropy(weights):
     """
@@ -30,4 +32,36 @@ def weighted_categorical_crossentropy(weights):
         loss = -K.sum(loss, -1)
         return loss
     
+    return loss
+
+# Use this loss function with median frequency coefficients weights
+# for class balance
+def weighted_loss(num_classes, coefficients, head=None):
+    
+    coefficients = tf.constant(coefficients)
+    num_classes = tf.constant(num_classes)
+
+    def loss(labels, logits):
+        with tf.name_scope('loss_1'):
+            logits = tf.reshape(logits, (-1, num_classes))
+            #print(tf.shape(logits))
+            epsilon = tf.constant(value=1e-10)
+
+            logits = logits + epsilon
+            # consturct one-hot label array
+            #label_flat = tf.to_int32( tf.reshape(labels, (-1, 1)))
+            #labels = tf.reshape(tf.one_hot(label_flat, depth=num_classes), (-1, num_classes))
+            labels = tf.to_float(tf.reshape(labels, (-1, num_classes)))
+            softmax = tf.nn.softmax(logits)
+            
+            #softmax = logits    # Softmax already applied?? 
+            cross_entropy = -tf.reduce_sum(tf.multiply(labels * tf.log(softmax + epsilon), coefficients), reduction_indices=[1])
+
+            cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
+            #print('cross :: {}'.format(cross_entropy_mean))
+
+            tf.add_to_collection('losses', cross_entropy_mean)
+            loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
+            #loss = cross_entropy_mean
+        return loss
     return loss

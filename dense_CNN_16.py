@@ -11,23 +11,24 @@ import random
 from keras.utils import plot_model
 from keras.models import Model, Sequential, model_from_json
 from keras.layers import Input, Dense, Dropout, Flatten, AlphaDropout, Activation, Reshape, ZeroPadding2D
-from keras.layers import Conv2D, MaxPooling2D, Conv2DTranspose, UpSampling2D, Lambda, core, Add
+from keras.layers import Conv2D, MaxPooling2D, Conv2DTranspose, UpSampling2D, Lambda, core, Add, Concatenate
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l1,l2
 from keras.constraints import MaxNorm
 from keras import backend as K
 from keras.activations import softmax
-from weighted_categorical_crossentropy import weighted_categorical_crossentropy
+from weighted_categorical_crossentropy import weighted_categorical_crossentropy, weighted_loss
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, CSVLogger
 from dataGenerator import DataGenerator
 from sklearn.metrics import classification_report, confusion_matrix, jaccard_similarity_score
 from BillinearUpsampling import BilinearUpSampling2D
-from customMaxLayers import MemoMaxPooling2D, MemoUpSampling2D
+#from customMaxLayers import MemoMaxPooling2D, MemoUpSampling2D
+#from keras_contrib.layers import CRF
 import itertools
 
 debug_mode = False
-patchSize = 128
-modelIndex = 3
+patchSize = 512
+modelIndex = 7
 channels = 3
 # =============================== Declare the dataset Paths ===========================================================================
 trainFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_train_set_{}'.format(patchSize)
@@ -44,34 +45,57 @@ reportPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environ
 
 np.random.seed(25)
 
-batch_size = 16
+batch_size = 2
 num_classes = 20   
 epochs = 20
 img_rows, img_cols = patchSize, patchSize
 input_shape=(img_rows, img_cols, channels)
 
 # Define the weights for each class, zero for unlabeled class
-class_weights ={0:1.,
-                1:1.,
-                2:1.,
-                3:1.,
-                4:1.,
-                5:1.,
-                6:1.,
-                7:1.,
-                8:1.,
-                9:1.,
-                10:1.,
-                11:1.,
-                12:1.,
-                13:1.,
-                14:1.,
-                15:1.,
-                16:1.,
-                17:1.,
-                18:1.,
+class_weights ={0:0.369147096473,
+                1:0.0581625322891,
+                2:0.245440987913,
+                3:0.00421239652911,
+                4:0.00338667573584,
+                5:0.0121238357347,
+                6:0.00246308928006,
+                7:0.00630047087614,
+                8:0.169754635332,
+                9:0.0158016639991,
+                10:0.0274461238615,
+                11:0.0087193852898,
+                12:0.000472286941215,
+                13:0.0703889305398,
+                14:0.000972789923577,
+                15:0.00183577125633,
+                16:3.94780130166e-05,
+                17:0.000999417066368,
+                18:0.00233243294596,
                 19:0.0}
 
+# Median Frequency Coefficients 
+coefficients = {0:0.0237995754847,
+                1:0.144286494916,
+                2:0.038448897913,
+                3:1.33901803472,
+                4:1.0,
+                5:0.715098627127,
+                6:4.20827446939,
+                7:1.58754122255,
+                8:0.0551054437019,
+                9:0.757994265912,
+                10:0.218245600783,
+                11:0.721125616748,
+                12:6.51048559366,
+                13:0.125434198729,
+                14:3.27995580458,
+                15:3.72813940546,
+                16:3.76817843552,
+                17:8.90686657342,
+                18:2.12162414027,
+                19:0.}
+
+coefficients = [key for index,key in coefficients.iteritems()]
 weights = [key for index,key in class_weights.iteritems()]
 
 start_time = time.time()
@@ -90,57 +114,43 @@ def computeMeanIou(matrix):
     fn = np.sum(fn, axis=1)
     perClassIou = np.true_divide(tp, (tp+fp+fn))
     meanIoU = np.true_divide(np.sum(perClassIou), num_classes)
-    return perClassIou, meanIoU 
+    # Calculate Pixel accuracy
+    pixelAcc = np.true_divide(tp, (tp+fp))
+    pixelAcc = np.true_divide(np.sum(pixelAcc), num_classes)
+    return pixelAcc, perClassIou, meanIoU 
 
 # Keras model function for 16x16 patch size    
 def fcn_16(patchSize, channels):
     input_shape = (patchSize, patchSize, channels)        
     inputs = Input(shape=input_shape)
+    
     # Block 1
-    x = Conv2D(16, (3,3), atrous_rate=(2,2) ,padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_1_16')(inputs)
-    x = Conv2D(16, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_2_16')(x)
-    x = Conv2D(16, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_3_16')(x)
+    x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_1_32')(inputs)
+    #x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_2_32')(x)
+    #x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_2_32')(x)
     # Block 2
-    x = Conv2D(32, (3,3), atrous_rate=(3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_4_32')(x)
-    x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_5_32')(x)
-    x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_6_32')(x)
     # Block 3
-    x = Conv2D(64, (3,3), atrous_rate=(4,4), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_7_64')(x)
-    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_8_64')(x)
+    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_2_64')(x)
     x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_3_64')(x)
-
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_9_128')(x)
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_10_128')(x)
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_11_128')(x)
-    x = AlphaDropout(0.1)(x)
-    #x = MaxPooling2D(pool_size=(2, 2), name='pool_1')(x)
+    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_4_128')(x)
     # Block 4
-    #x = Deconvolution2D(128, (5,5), activation='selu', kernel_initializer='lecun_normal', name='Deconv_1_128')(x)
-    #x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_12_128')(x)
-    #x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_13_128')(x)
-    # Block 5 (Deconv Block)
-    #x = Deconvolution2D(64, (3,3), activation='selu', kernel_initializer='lecun_normal', name='Deconv_2_64')(x)
-    x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_14_64')(x)
-    x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_15_64')(x)
-    x = AlphaDropout(0.1)(x)
-    #x = Deconvolution2D(32, (3,3), activation='selu', kernel_initializer='lecun_normal', name='Deconv_3_32')(x)
-    #x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_16_32')(x)
-    #x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_17_32')(x)
-    #
-    x = Conv2D(num_classes, (1,1), kernel_initializer='lecun_normal', name='out_conv')(x)
+    x = Conv2D(512, (1,1), padding='valid', activation='selu', kernel_initializer='lecun_normal', name='Conv_5_512')(x)
+    
+    #x = MaxPooling2D(pool_size=(2, 2))()
+    #x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_7_256')(x)
+    #x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_8_256')(x)
+    #Block 5
+    x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='ConvT_1_128')(x)
+    x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='ConvT_2_64')(x)
+    x = Conv2DTranspose(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='ConvT_3_32')(x)
+    #x = Conv2DTranspose(32, (1,1), padding='valid', activation='selu', kernel_initializer='lecun_normal', name='ConvT_4_32')(x)
 
-    predictions = core.Activation('softmax')(x)
+    predictions = Conv2DTranspose(num_classes, (1,1), kernel_initializer='lecun_normal', name='output')(x)
+
+    #predictions = core.Activation('softmax')(x)
 
     model = Model(inputs=inputs, outputs=predictions)
 
-    model.summary()
-    model.compile(loss=weighted_categorical_crossentropy(weights) ,
-                  optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
-                  metrics=['accuracy'])
-    '''
-    if weightsPath:
-        model.load_weights(weightsPath)
-    '''
     return model
     
 def fcn_32(patchSize, channels):
@@ -192,8 +202,8 @@ def fcn_64(patchSize, channels):
     input_shape = (patchSize, patchSize, channels)        
     inputs = Input(shape=input_shape)
 
-    x = Conv2D(64, (5,5), dilation_rate=(3, 3), activation='selu', padding='same', kernel_initializer='lecun_normal')(inputs)
-    x = Conv2D(64, (5,5), dilation_rate=(3, 3), activation='selu', padding='same', kernel_initializer='lecun_normal')(x)
+    x = Conv2D(64, (3,3), activation='selu', padding='same', kernel_initializer='lecun_normal')(inputs)
+    x = Conv2D(64, (3,3), activation='selu', padding='same', kernel_initializer='lecun_normal')(x)
     x = MaxPooling2D(pool_size=(2, 2))(x)
     #
     x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
@@ -204,23 +214,23 @@ def fcn_64(patchSize, channels):
     x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     x = MaxPooling2D(pool_size=(2, 2))(x)
     #    
-    x = BilinearUpSampling2D(size=(2, 2))(x)
+    #x = BilinearUpSampling2D(size=(2, 2))(x)
+    x = Conv2DTranspose(256, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     x = Conv2DTranspose(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2DTranspose(256, (1,1), padding='valid', activation='selu', kernel_initializer='lecun_normal')(x)
     #
-    x = BilinearUpSampling2D(size=(2, 2))(x)
+    #x = BilinearUpSampling2D(size=(2, 2))(x)
+    x = Conv2DTranspose(256, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
+    x = Conv2DTranspose(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
+    #
+    x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2DTranspose(128, (3,3), padding='valid', activation='selu', kernel_initializer='lecun_normal')(x)
-    #
-    x = BilinearUpSampling2D(size=(2, 2))(x)
-    x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     #
-    x = AlphaDropout(0.1)(x)
+    #x = AlphaDropout(0.1)(x)
     #
-    x = Conv2D(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal')(x)
+    predictions = Conv2DTranspose(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal')(x)
 
-    predictions = core.Activation('softmax')(x)
+    #predictions = core.Activation('softmax')(x)
 
     model = Model(inputs=inputs, outputs=predictions)
 
@@ -241,27 +251,24 @@ def fcn_128(patchSize, channels):
 
     x = Conv2D(64, (3,3), activation='selu', padding='same', kernel_initializer='lecun_normal')(inputs)
     x = Conv2D(64, (3,3), activation='selu', padding='same', kernel_initializer='lecun_normal')(x)
-    pool_1 = MaxPooling2D(pool_size=(2, 2))(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
     #
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(pool_1)
     x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    pool_2 = MaxPooling2D(pool_size=(2, 2))(x)
+    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
     #
-    x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(pool_2)
     x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    pool_3 = MaxPooling2D(pool_size=(2, 2))(x)
+    x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
     #
-    up_1 = BilinearUpSampling2D(size=(2, 2))(pool_3)
-    x = Conv2DTranspose(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(up_1)
-    x = Conv2DTranspose(256, (1,1), padding='valid', activation='selu', kernel_initializer='lecun_normal')(x)
+    x = Conv2DTranspose(256, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
+    x = Conv2DTranspose(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     #
-    up_2 = BilinearUpSampling2D(size=(2, 2))(x)
-    x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(up_2)
-    x = Conv2DTranspose(128, (1,1), padding='valid', activation='selu', kernel_initializer='lecun_normal')(x)
+    x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
+    x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     #
-    up_3 = BilinearUpSampling2D(size=(2, 2))(x)
-    x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(up_3)
-    x = Conv2DTranspose(64, (1,1), padding='valid', activation='selu', kernel_initializer='lecun_normal')(x)
+    x = Conv2DTranspose(64, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
+    x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     #
     #x = AlphaDropout(0.1)(x)
     #
@@ -271,58 +278,67 @@ def fcn_128(patchSize, channels):
 
     model = Model(inputs=inputs, outputs=predictions)
 
-    '''
-    model.summary()
-    model.compile(loss=weighted_categorical_crossentropy(weights) ,
-                  optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
-                  metrics=['accuracy'])
-    if weightsPath:
-        model.load_weights(weightsPath)
-    
-    '''
     return model
 
 def fcn_512(patchSize, channels):
     input_shape = (patchSize, patchSize, channels)        
     inputs = Input(shape=input_shape)
-    # Block 1
-    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(inputs)
-    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = MaxPooling2D(pool_size=(2, 2))(x)
     #
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = MaxPooling2D(pool_size=(2, 2), strides=(2,2))(x)
+    x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_1')(inputs)
+    x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_2')(x)
+    x = MaxPooling2D(pool_size=(2, 2), name='Pool_1')(x)
     #
-    x = Conv2D(256, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2D(256, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal')(x)
-    x = MaxPooling2D(pool_size=(2, 2))(x)
-    # Atrous 1 block
-    atrous_1 = Conv2D(256, (3,3), dilation_rate=(3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    atrous_1 = BilinearUpSampling2D(size=(2, 2))(atrous_1)
-    atrous_1 = Conv2D(128, (1,1), activation='selu', kernel_initializer='lecun_normal')(atrous_1)
+    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_3')(x)
+    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_4')(x)
+    x = MaxPooling2D(pool_size=(2, 2), name='Pool_2')(x)
     #
-    atrous_2 = Conv2D(256, (3,3), dilation_rate=(6,6), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    atrous_2 = BilinearUpSampling2D(size=(2, 2))(atrous_2)
-    atrous_2 = Conv2D(128, (1,1), activation='selu', kernel_initializer='lecun_normal')(atrous_2)
+    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_5')(x)
+    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_6')(x)
+    x = MaxPooling2D(pool_size=(2, 2), name='Pool_3')(x)
+    #
+    x = Conv2D(256, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal', name='Conv_7')(x)
+    x = Conv2D(256, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal', name='Conv_8')(x)
+    x = MaxPooling2D(pool_size=(2, 2), name='Pool_4')(x)
+    #
+    atrous_1 = Conv2D(256, (3,3), dilation_rate=(3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_1_1')(x)
+    atrous_1 = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_1_2')(atrous_1)
+    atrous_1 = Conv2D(128, (1,1), activation='selu', kernel_initializer='lecun_normal', name='Atrous_1_3')(atrous_1)
+    #
+    atrous_2 = Conv2D(256, (3,3), dilation_rate=(6,6), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_2_1')(x)
+    atrous_2 = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_2_2')(atrous_2)
+    atrous_2 = Conv2D(128, (1,1), activation='selu', kernel_initializer='lecun_normal', name='Atrous_2_3')(atrous_2)
     #   
-    atrous_3 = Conv2D(256, (3,3), dilation_rate=(9,9), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    atrous_3 = BilinearUpSampling2D(size=(2, 2))(atrous_3)
-    atrous_3 = Conv2D(128, (1,1), padding='same',  activation='selu', kernel_initializer='lecun_normal')(atrous_3)
+    atrous_3 = Conv2D(256, (3,3), dilation_rate=(9,9), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_3_1')(x)
+    atrous_3 = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_3_2')(atrous_3)
+    atrous_3 = Conv2D(128, (1,1), padding='valid',  activation='selu', kernel_initializer='lecun_normal', name='Atrous_3_3')(atrous_3)
     #
-    atrous_4 = Conv2D(256, (3,3), dilation_rate=(12,12), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    atrous_4 = BilinearUpSampling2D(size=(2, 2))(atrous_4)
-    atrous_4 = Conv2D(128, (1,1), padding='same',  activation='selu', kernel_initializer='lecun_normal')(atrous_4)
-    #atrous_4 = Conv2DTranspose(128, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal')(atrous_4)
-    x = Add()([atrous_1, atrous_2, atrous_3, atrous_4])
-    x = BilinearUpSampling2D(size=(2, 2))(x)    
-    x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = BilinearUpSampling2D(size=(2, 2))(x)
+    atrous_4 = Conv2D(256, (3,3), dilation_rate=(12,12), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_4_1')(x)
+    atrous_4 = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_4_2')(atrous_4)
+    atrous_4 = Conv2D(128, (1,1), padding='valid',  activation='selu', kernel_initializer='lecun_normal', name='Atrous_4_3')(atrous_4)
+    #
+    atrous_5 = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_5_1')(x)
+    atrous_5 = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_5_2')(atrous_5)
+    atrous_5 = Conv2D(128, (1,1), padding='valid', activation='selu', kernel_initializer='lecun_normal', name='Atrous_5_3')(atrous_5)
+    x = Add(name='Fusion')([atrous_1, atrous_2, atrous_3, atrous_4, atrous_5])
+    #
+    x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_1')(x)
+    x = Conv2DTranspose(128, (3,3),  padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_2')(x)
+    #    x = Conv2DTranspose(128, (3,3), activation='selu',  kernel_initializer='lecun_normal')(x)
+    #    
+    x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_3')(x)
+    x = Conv2DTranspose(128, (3,3),  padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_4')(x)
+    #   x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
+    #
+    x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_5')(x)
+    x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_6')(x)
+    #    x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
+    #
+    x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_7')(x)
+    x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_8')(x)
+    #    x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
+    predictions = Conv2DTranspose(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal', name='Deconv_9')(x)
     
-    x = Conv2DTranspose(num_classes, (1,1), padding='valid')(x)
-    
-    #y = core.Reshape((patchSize,patchSize,num_classes))(x)
-    predictions = core.Activation('softmax')(x)
+    #predictions = core.Activation('softmax')(x)
 
     model = Model(inputs=inputs, outputs=predictions)
 
@@ -370,22 +386,23 @@ def plot_results(history, y_true, y_pred, score):
     plt.show()
     report = classification_report(y_true, y_pred)
     print(report)
-    meanIoU = jaccard_similarity_score(y_true, y_pred, normalize=True)  
+    meanIoU = jaccard_similarity_score(y_true, y_pred)  
 
     # Compute mean IoU
     cfMatrix = confusion_matrix(y_true, y_pred)
-    labelIou, meanIoUfromcf = computeMeanIou(cfMatrix)
+    meanAcc, labelIou, meanIoUfromcf = computeMeanIou(cfMatrix)
     
     print('----- Mean IoU ----- ')
     print('------ %s -----------'%(str(meanIoU)))
     print('---- Manual mean Iou from CF ------')
     print('------ %s -----------'%(str(meanIoUfromcf)))
-
+    print('------ Pixel Accuracy ----')
+    print('---------- {} -------------'.format(meanAcc))
     # Remove the last label
     cfMatrix = np.delete(cfMatrix, cfMatrix.shape[0]-1, axis=0)
     cfMatrix = np.delete(cfMatrix, cfMatrix.shape[0]-1, axis=1)   
     plt.figure()
-    fig, ax = plot_confusion_matrix(cfMatrix, labels.listLabels, normalize=True)
+    plot_confusion_matrix(cfMatrix, labels.listLabels)
     plt.show()
 
     # Write report to txt
@@ -440,7 +457,7 @@ def main():
     # testCb = TestCallback(epochs, testGenerator, trainGenerator, batch_size, testSetSize)
 
     # Early stopping to avoid overfitting.
-    earlyStopping = EarlyStopping(monitor='val_loss', patience=18) 
+    earlyStopping = EarlyStopping(monitor='val_loss', patience=12) 
 
     # Logger callback for learning curves
     csv_logger = CSVLogger(lrCurvesPath, append=True, separator=',')
@@ -451,41 +468,85 @@ def main():
                 verbose=1,
                 save_best_only=True,
                 save_weights_only=True,
-                mode='auto')
+                mode='min')
 
     plateauCallback = ReduceLROnPlateau(monitor='loss',
                 factor=0.5,
-                patience=7,
+                patience=5,
                 min_lr=0.00005,
                 verbose=1,
-                cooldown=2)
+                cooldown=3)
 
     # Instantiate data generator object
     data_gen = DataGenerator(num_classes, batch_size, img_rows, img_cols, trainFolder, valFolder, testFolder)
 
     if patchSize == 16:
-        model = fcn_16(patchSize, channels)
-    elif patchSize == 32:
-        #model = fcn_32(patchSize, channels)
-        json_file = open(modelParamPath, 'r')
-        loaded_model_json = json_file.read()
-        json_file.close()
-        model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
-        model.load_weights(checkpointPath)
+        if os.path.exists(modelParamPath):
+            json_file = open(modelParamPath, 'r')
+            loaded_model_json = json_file.read()
+            json_file.close()
+            model = model_from_json(loaded_model_json)
+            model.load_weights(checkpointPath)
+        else:
+            model = fcn_16(patchSize, channels)
         model.summary()
-        model.compile(loss=weighted_categorical_crossentropy(weights) ,
+        model.compile(loss=weighted_loss(num_classes, coefficients) ,
+                  optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
+                  metrics=['accuracy'])
+    elif patchSize == 32:
+        if os.path.exists(modelParamPath):
+            json_file = open(modelParamPath, 'r')
+            loaded_model_json = json_file.read()
+            json_file.close()
+            model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
+            model.load_weights(checkpointPath)
+        else:
+            model = fcn_32(patchSize, channels)
+        model.summary()
+        model.compile(loss=weighted_loss(num_classes, coefficients) ,
                   optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
                   metrics=['accuracy'])
     elif patchSize == 64:
-        model = fcn_64(patchSize, channels)
-    elif patchSize == 128:
-        model = fcn_128(patchSize, channels)
+        if os.path.exists(modelParamPath):
+            json_file = open(modelParamPath, 'r')
+            loaded_model_json = json_file.read()
+            json_file.close()
+            model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
+            model.load_weights(checkpointPath)
+        else:
+            model = fcn_64(patchSize, channels)
         model.summary()
-        model.compile(loss=weighted_categorical_crossentropy(weights) ,
+        model.compile(loss=weighted_loss(num_classes, coefficients) ,
+                  optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
+                  metrics=['accuracy'])    
+    elif patchSize == 128:
+        if os.path.exists(modelParamPath):
+            json_file = open(modelParamPath, 'r')
+            loaded_model_json = json_file.read()
+            json_file.close()
+            model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
+            model.load_weights(checkpointPath)
+            print('Weights Loaded\n')
+        else:
+            model = fcn_128(patchSize, channels)
+        model.summary()
+        model.compile(loss=weighted_categorical_crossentropy(weights),
                   optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
                   metrics=['accuracy'])
     elif patchSize == 512:
-        model = fcn_512(patchSize, channels)
+        if os.path.exists(modelParamPath):
+            json_file = open(modelParamPath, 'r')
+            loaded_model_json = json_file.read()
+            json_file.close()
+            model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
+            model.load_weights(checkpointPath)
+            print('Weights Loaded\n')
+        else:
+            model = fcn_512(patchSize, channels)
+        model.summary()
+        model.compile(loss=weighted_loss(num_classes, coefficients),
+                  optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
+                  metrics=['accuracy'])
 
     # ================================== Start Training ====================================== #
     start_time = time.time()

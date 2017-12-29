@@ -12,7 +12,7 @@ import re
 trainImageSet = None
 valImageSet = None
 testImageSet = None
-offset = 40000 # how many samples per file
+offset = 50000 # how many samples per file
 mode = 'Patch'
 patchSize = 32
 img_rows, img_cols = 512, 512
@@ -176,10 +176,10 @@ def main():
 	denseExtractor(trainImageSet, trainImagePath, trainFinePath, outTrainImgPath, filePattern, mode)
 	print('Validation...')
 	filePattern = ['X_validation_set_', 'Y_validation_set_']
-	denseExtractor(valImageSet, valImagePath, valFinePath, outValImgPath, filePattern, mode)
+	#denseExtractor(valImageSet, valImagePath, valFinePath, outValImgPath, filePattern, mode)
 	print('Test...')
 	filePattern = ['X_test_set_', 'Y_test_set_']
-	denseExtractor(testImageSet, testImagePath, testFinePath, outTestImgPath, filePattern, mode)
+	#denseExtractor(testImageSet, testImagePath, testFinePath, outTestImgPath, filePattern, mode)
 
 
 if __name__ == '__main__':
