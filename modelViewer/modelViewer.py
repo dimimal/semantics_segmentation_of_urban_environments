@@ -160,6 +160,9 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Setup the GUI
         self.initUI()
 
+        # Load Model First
+        self.loadModel()
+
         # If we already know a city from the saved config -> load it
         #self.loadCity()
         self.imageChanged()
@@ -181,6 +184,8 @@ class CityscapesViewer(QtGui.QMainWindow):
         loadAction.setShortcuts(['o'])
         #self.setTip( loadAction, 'Open city' )
         #loadAction.triggered.connect( self.getCityFromUser )
+        self.setTip(loadAction, 'Open Image')
+        loadAction.triggered.connect( self.getImageFromUser)
         self.toolbar.addAction(loadAction)
 
         '''
@@ -201,6 +206,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         '''
 
         # Play
+        '''
         playAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'play.png')), '&Tools', self)
         playAction.setShortcut(' ')
         playAction.setCheckable(True)
@@ -210,7 +216,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.toolbar.addAction(playAction)
         self.actImageNotLast.append(playAction)
         self.playAction = playAction
-        
+        '''
         # Select image
         selImageAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'shuffle.png' )), '&Tools', self)
         selImageAction.setShortcut('i')
@@ -218,7 +224,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         selImageAction.triggered.connect( self.selectImage )
         self.toolbar.addAction(selImageAction)
         self.actImage.append(selImageAction)
-
+        '''
         # Enable/disable disparity visu. Toggle button
         if self.enableDisparity:
             dispAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'disp.png' )), '&Tools', self)
@@ -229,7 +235,7 @@ class CityscapesViewer(QtGui.QMainWindow):
             dispAction.toggled.connect( self.dispToggle )
             self.toolbar.addAction(dispAction)
             self.actImage.append(dispAction)
-
+        '''
         # Enable/disable zoom. Toggle button
         zoomAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'zoom.png' )), '&Tools', self)
         zoomAction.setShortcuts(['z'])
@@ -289,6 +295,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.applicationTitle = 'Cityscapes Viewer v1.0'
         self.setWindowTitle(self.applicationTitle)
         self.displayHelpMessage()
+        self.getImageFromUser()
         #self.getCityFromUser()
         # And show the application
         self.show()
@@ -349,9 +356,10 @@ class CityscapesViewer(QtGui.QMainWindow):
     # Update the mouse selection
     # View
     def selectImage(self):
+        '''
         if not self.images:
             return
-
+        '''
         dlgTitle = "Select image to load"
         self.statusBar().showMessage(dlgTitle)
         items = QtCore.QStringList( [ os.path.basename(i) for i in self.images ] )
@@ -491,10 +499,16 @@ class CityscapesViewer(QtGui.QMainWindow):
 
         self.statusBar().showMessage(message)
 
+    # Load the model from file to get predictions
+    def loadModel(self):
+        
+        pass
+
     # Load the labels from file
     # Only loads if they exist
     # Otherwise the filename is stored and that's it
     def loadLabels(self):
+        
         filename = self.getLabelFilename()
         if not filename:
             self.clearAnnotation()
@@ -965,6 +979,31 @@ class CityscapesViewer(QtGui.QMainWindow):
     def clearAnnotation(self):
         self.annotation = None
         self.currentLabelFile = ""
+    
+    def getImageFromUser(self):
+        restoreMessage = self.statusBar().currentMessage()
+
+        annotations      = [ "gtFine" , "gtCoarse" ]
+        rawImagePatttern = ['leftImg8bit']
+        #splits      = [ "train_extra" , "train"  , "val" , "test" ]
+        '''
+        for file in os.listdir(path):
+            if rawImagePatttern[0] in file:
+                self.images.append(file)
+            for gt in Annotations:
+                if gt in file:
+                    self.
+        '''
+        dlgTitle = "Select new Image for Predictions"
+        message  = dlgTitle
+        question = dlgTitle
+        message  = "Select image for viewing"
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        for file in os.listdir(dir_path)
+        #print(dir_path)
+        #items = [ for file in os.listdir(self.filePath)]
+        self.statusBar().showMessage(message)
+        (item, ok) = QtGui.QInputDialog.getItem(self, dlgTitle, question, [], 0, False)
     '''
     def getCityFromUser(self):
         # Reset the status bar to this message when leaving
