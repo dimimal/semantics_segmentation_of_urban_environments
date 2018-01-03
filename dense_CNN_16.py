@@ -47,7 +47,7 @@ np.random.seed(25)
 
 batch_size = 2
 num_classes = 20   
-epochs = 20
+epochs = 60
 img_rows, img_cols = patchSize, patchSize
 input_shape=(img_rows, img_cols, channels)
 
@@ -470,7 +470,7 @@ def main():
                 save_weights_only=True,
                 mode='min')
 
-    plateauCallback = ReduceLROnPlateau(monitor='loss',
+    plateauCallback = ReduceLROnPlateau(monitor='val_loss',
                 factor=0.5,
                 patience=5,
                 min_lr=0.00005,
