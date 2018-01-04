@@ -7,7 +7,8 @@
 #################
 
 # pyqt for everything graphical
-from PyQt4 import QtGui, QtCore
+from PyQt4 import QtGui
+from PyQt4 import QtCore
 # get command line parameters
 import sys
 # walk directories
@@ -20,6 +21,9 @@ import subprocess
 import copy 
 # numpy
 import numpy as np
+# re for regular expression usage
+import re
+
 # matplotlib for colormaps
 try:
     import matplotlib.colors
@@ -94,9 +98,10 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Filenames of all images in current city
         self.images            = []
         # Image extension
-        #self.imageExt          = "_leftImg8bit.png"
+        self.imageExt          = "_leftImg8bit.png"
         # Ground truth extension
         #self.gtExt             = "_gt*_polygons.json"
+        self.gtExt             = "_gt*_*_.png"
         # Current image as QImage
         self.image             = QtGui.QImage()
         # Index of the current image within the city folder
@@ -469,6 +474,17 @@ class CityscapesViewer(QtGui.QMainWindow):
             else:
                 self.idx = 0
     '''
+    # Instead of loadCity method loadImages introduced to load images directly
+    def loadImages(self):
+        self.images = []
+        if os.path.isdir(self.imagePath):
+            self.images = glob.glob( '*' + self.imageExt )
+            self.images.sort()
+            if self.currentFile in self.images:
+                self.idx = self.images.index(self.currentFile)
+            else:
+                self.idx = 0
+        self.annotations
     # Load the currently selected image
     # Does only load if not previously loaded
     # Does not refresh the GUI
@@ -501,7 +517,7 @@ class CityscapesViewer(QtGui.QMainWindow):
 
     # Load the model from file to get predictions
     def loadModel(self):
-        
+
         pass
 
     # Load the labels from file
@@ -980,30 +996,68 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.annotation = None
         self.currentLabelFile = ""
     
+    # Replace getCityFromUser and load only one image
     def getImageFromUser(self):
         restoreMessage = self.statusBar().currentMessage()
 
-        annotations      = [ "gtFine" , "gtCoarse" ]
-        rawImagePatttern = ['leftImg8bit']
-        #splits      = [ "train_extra" , "train"  , "val" , "test" ]
-        '''
-        for file in os.listdir(path):
-            if rawImagePatttern[0] in file:
-                self.images.append(file)
-            for gt in Annotations:
-                if gt in file:
-                    self.
-        '''
+        annotations      = [ "gtFine" ]
+        rawImagePatttern = ["leftImg8bit"]
+       
         dlgTitle = "Select new Image for Predictions"
         message  = dlgTitle
         question = dlgTitle
         message  = "Select image for viewing"
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        for file in os.listdir(dir_path)
-        #print(dir_path)
-        #items = [ for file in os.listdir(self.filePath)]
         self.statusBar().showMessage(message)
-        (item, ok) = QtGui.QInputDialog.getItem(self, dlgTitle, question, [], 0, False)
+        #for file in os.listdir(dir_path)
+        #print(dir_path)
+        items = [file for file in os.listdir(dir_path) if annotations[0] in file or rawImagePatttern[0] in file]
+        if items:
+
+            (item, ok) = QtGui.QInputDialog.getItem(self, dlgTitle, question, items, 0, False)       
+            # Restore message
+            self.statusBar().showMessage(restoreMessage)
+
+            if ok and item:
+                '''
+                # Check if test folder in order to load image only!! Test has no labels
+                (split,gt,city) = [ str(i) for i in item.split(', ') ]
+                if split == 'test' and not self.showDisparity:
+                    self.transp = 0.1
+                else:
+                    self.transp = 0.5
+                '''
+                #print(str(items))
+                self.transp = 0.5
+                #print(os.path.normpath(dir_path))
+                self.imagePath  = dir_path#+'/'+item 
+                #pattern = re.findall('\w+_\d+_\d+_', str(item))[0] 
+                self.labelPath  = dir_path# + '/' + pattern + annotations[0] + '_labelTrainIds.png'
+                # If files not in place show proper message
+                if not os.path.exists(self.imagePath) or not os.path.exists(self.labelPath):
+                    message  = QtGui.QMessageBox()
+                    message.setIcon(QtGui.QMessageBox.Warning)
+                    message.setText('Path or file does not exist')
+                    message.setInformativeText("Check if your files are in proper place or format")
+                    message.setWindowTitle('Warning Message')
+                    message.setStandardButtons(QtGui.QMessageBox.Ok)
+                    sys.exit(message.exec_())
+                # transform loadCity method to load image callback (loadImages())
+                self.loadImages()
+                self.imageChanged()
+        else:
+ 
+            warning = ""
+            warning += "The data was not found. Please:\n\n"
+            warning += " - make sure the folder is in the Cityscapes root folder\n"
+
+            # Display wrong message
+            reply = QtGui.QMessageBox.information(self, "ERROR!", warning, QtGui.QMessageBox.Ok)
+            if reply == QtGui.QMessageBox.Ok:
+                sys.exit()
+
+        return                
+
     '''
     def getCityFromUser(self):
         # Reset the status bar to this message when leaving
