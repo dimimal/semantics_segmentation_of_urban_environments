@@ -110,6 +110,14 @@ name2label      = { label.name    : label for label in labels           }
 id2label        = { label.id      : label for label in labels           }
 # trainId to label object
 trainId2label   = { label.trainId : label for label in reversed(labels) }
+# trainId to color label object
+#trainId2color   = { label.color   : label for label in labels }
+trainId2color   = {}
+for label in labels:
+    trainId                = label.trainId
+    color                  = label.color
+    trainId2color[trainId] = color 
+
 # category to list of label objects
 category2labels = {}
 for label in labels:
@@ -179,3 +187,4 @@ if __name__ == "__main__":
     trainId = 0
     name = trainId2label[trainId].name
     print("Name of label with trainID '{id}': {name}".format( id=trainId, name=name ))
+    print(" Label color :: {}".format(trainId2color))

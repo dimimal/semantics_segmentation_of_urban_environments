@@ -23,7 +23,8 @@ import copy
 import numpy as np
 # re for regular expression usage
 import re
-
+# Load Opencv to make resizes 
+import cv2 as cv
 # matplotlib for colormaps
 try:
     import matplotlib.colors
@@ -39,7 +40,7 @@ except:
 
 # Import relative modules
 from helpers.annotation import Annotation
-from helpers.labels import name2label, assureSingleInstanceName
+from helpers.labels import name2label, assureSingleInstanceName, trainId2color
 
 
 #################
@@ -101,13 +102,17 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.imageExt          = "_leftImg8bit.png"
         # Ground truth extension
         #self.gtExt             = "_gt*_polygons.json"
-        self.gtExt             = "_gt*_*_.png"
+        self.gtExt             = "_gt*_*.png"
+        # Prediction Extension Pattern
+        self.predExt           = "_predictions*.txt"
         # Current image as QImage
         self.image             = QtGui.QImage()
         # Index of the current image within the city folder
         #self.idx               = 0
         # All annotated objects in current image, i.e. list of labelObject
         self.annotation        = []
+        # All prediction files that came from model
+        self.predictions       = []
         # The current object the mouse points to. It's index in self.labels
         self.mouseObj          = -1
         # The object that is highlighted and its label. An object instance
@@ -165,7 +170,10 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Setup the GUI
         self.initUI()
 
-        # Load Model First
+        # Retrieve the evaluation mode
+        #self.selectMode()
+
+        # Load Model First (If we add model integration)
         self.loadModel()
 
         # If we already know a city from the saved config -> load it
@@ -300,6 +308,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.applicationTitle = 'Cityscapes Viewer v1.0'
         self.setWindowTitle(self.applicationTitle)
         self.displayHelpMessage()
+        self.selectMode()
         self.getImageFromUser()
         #self.getCityFromUser()
         # And show the application
@@ -361,10 +370,10 @@ class CityscapesViewer(QtGui.QMainWindow):
     # Update the mouse selection
     # View
     def selectImage(self):
-        '''
+        
         if not self.images:
             return
-        '''
+        
         dlgTitle = "Select image to load"
         self.statusBar().showMessage(dlgTitle)
         items = QtCore.QStringList( [ os.path.basename(i) for i in self.images ] )
@@ -418,9 +427,6 @@ class CityscapesViewer(QtGui.QMainWindow):
         message += " - toggle autoplay [space]\n"
         message += " - increase/decrease label transparency\n"
         message += "   [ctrl+mousewheel] or [+ / -]\n"
-        if self.enableDisparity:
-            message += " - show disparity/depth overlay (if available) [d]\n"
-
         message += " - open zoom window [z]\n"
         message += "       zoom in/out [mousewheel]\n"
         message += "       enlarge/shrink zoom window [shift+mousewheel]\n"
@@ -476,15 +482,35 @@ class CityscapesViewer(QtGui.QMainWindow):
     '''
     # Instead of loadCity method loadImages introduced to load images directly
     def loadImages(self):
-        self.images = []
-        if os.path.isdir(self.imagePath):
-            self.images = glob.glob( '*' + self.imageExt )
-            self.images.sort()
-            if self.currentFile in self.images:
-                self.idx = self.images.index(self.currentFile)
-            else:
-                self.idx = 0
-        self.annotations
+        #self.images      = []
+        #if os.path.isdir(self.imagePath):
+        #self.images      = image
+        #self.images.sort()
+        #self.annotations = predictions
+        #self.idx  = self.images.index()
+        ''' 
+        if self.currentFile in self.images:
+            self.idx = self.images.index(self.currentFile)
+        else:
+            self.idx = 0
+        self.annotations = glob.glob('*' + self.gtExt)
+        self.image
+        '''
+        #print('line 499', type(self.images))
+        #test = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/modelViewer/aachen_000000_000019_leftImg8bit.png'
+        '''
+        print(str(self.images))
+        if os.path.exists(str(self.images)):
+            print('welcome')
+        '''
+        self.image  = QtGui.QImage(self.images)
+        self.idx    = 0
+
+        self.loadLabels()
+        self.loadImage()
+        #self.images      = image
+        #self.annotations = predictions
+
     # Load the currently selected image
     # Does only load if not previously loaded
     # Does not refresh the GUI
@@ -492,17 +518,17 @@ class CityscapesViewer(QtGui.QMainWindow):
         success = False
         message = self.defaultStatusbar
         if self.images:
-            filename = self.images[self.idx]
-            filename = os.path.normpath( filename )
-            if not self.image.isNull() and filename == self.currentFile:
+            #filename = self.images[self.idx]
+            #filename = os.path.normpath( filename )
+            if not self.image.isNull():# and filename == self.currentFile:
                 success = True
             else:
-                self.image = QtGui.QImage(filename)
+                self.image = QtGui.QImage(self.images)
                 if self.image.isNull():
-                    message = "Failed to read image: {0}".format( filename )
+                    message = "Failed to read image: {0}".format( str(self.images) )
                 else:
-                    message = "Read image: {0}".format( filename )
-                    self.currentFile = filename
+                    message = "Read image: {0}".format( str(self.images) )
+                    self.currentFile = str(self.images)
                     success = True
 
         # Update toolbar actions that need an image
@@ -515,14 +541,78 @@ class CityscapesViewer(QtGui.QMainWindow):
 
         self.statusBar().showMessage(message)
 
+    # Show the dialog box to select the proper mode prediction mode
+    # In progress:: TODO: Add properly the functionalities
+    def selectMode(self):
+        window  = QtGui.QWidget()
+        layout  = QtGui.QHBoxLayout()
+        self.b1 = QtGui.QCheckBox("Evalutaion")
+        self.b2 = QtGui.QCheckBox('Prediction')
+        self.b1.setChecked(True)
+        ok      = QtGui.QPushButton(window)
+        ok.setText('OK')
+        self.bg = QtGui.QButtonGroup()
+        self.bg.addButton(self.b1, 1) 
+        self.bg.addButton(self.b2, 1) 
+        #self.b1.stateChanged.connect(lambda:self.btnstate(self.b1))
+        layout.addWidget(self.b1)
+        layout.addWidget(self.b2)
+        layout.addStretch()
+        self.bg.buttonClicked[QtGui.QAbstractButton].connect(self.btngroup)    
+
+        window.setLayout(layout)
+        window.setWindowTitle('Select tool mode')
+        #self.setWindowTitle("Select evaluation or prediction")
+        
+        window.show()
+        self.update()
+            
+    def btngroup(self, button):
+        if button.text() == 'Evaluation':
+            self.mode = 'Eval'
+        elif button.text() == 'Prediction':
+            self.mode = 'Prediction'
+
     # Load the model from file to get predictions
     def loadModel(self):
-
         pass
 
+    # Check the dimensions of the labels to match with the image
+    def checkDims(self):
+        if self.annotations.ndim == 1:
+            self.annotations = np.reshape(self.annotations, (512,512))
+        fx               = 1024 / self.annotations.shape[0]
+        fy               = 2048 / self.annotations.shape[1]
+        shape = self.annotations.shape
+        self.annotations = cv.resize(self.annotations, (fx*shape[0], fy*shape[1]), interpolation=cv.INTER_NEAREST)
+        #assert(self.image.shape == self.annotations.shape)        
+    
+    # Transform trainId labels to colors
+    def labels2Color(self):
+        temp = np.empty((self.annotations.shape[0], self.annotations.shape[1], 3), dtype='uint8')
+        for index, value in np.ndenumerate(self.annotations):
+            temp[index[0], index[1]] = trainId2color[value]
+        self.annotations = temp
+            
+    # The new loadLabels Function
+    def loadLabels(self):
+        #print(self.annotations)
+
+        self.annotations = np.loadtxt(str(self.annotations))
+        self.annotations = np.asarray(self.annotations, dtype='uint8')
+        self.checkDims()
+        self.labels2Color()
+
+        # Remeber the status bar message to restore it later
+        restoreMessage = self.statusBar().currentMessage()
+
+        # Restore the message
+        self.statusBar().showMessage( restoreMessage )
+    
     # Load the labels from file
     # Only loads if they exist
     # Otherwise the filename is stored and that's it
+        '''
     def loadLabels(self):
         
         filename = self.getLabelFilename()
@@ -553,7 +643,8 @@ class CityscapesViewer(QtGui.QMainWindow):
 
         # Restore the message
         self.statusBar().showMessage( restoreMessage )
-
+        '''
+    
     '''
     # Load the disparity map from file
     # Only loads if they exist
@@ -743,10 +834,10 @@ class CityscapesViewer(QtGui.QMainWindow):
                 print("Details: label '{}', file '{}'".format(name,self.currentLabelFile))
                 continue
 
-            poly = self.getPolygon(obj)
+            #poly = self.getPolygon(obj)
 
             # Scale the polygon properly
-            polyToDraw = poly * QtGui.QTransform.fromScale(self.scale,self.scale)
+            #polyToDraw = poly * QtGui.QTransform.fromScale(self.scale,self.scale)
 
             # Default drawing
             # Color from color table, solid brush
@@ -757,7 +848,7 @@ class CityscapesViewer(QtGui.QMainWindow):
             if self.highlightObj and obj == self.highlightObj:
                 # First clear everything below of the polygon
                 qp2.setCompositionMode( QtGui.QPainter.CompositionMode_Clear )
-                qp2.drawPolygon( polyToDraw )
+                #qp2.drawPolygon( polyToDraw )
                 qp2.setCompositionMode( QtGui.QPainter.CompositionMode_SourceOver )
                 # Set the drawing to a special pattern
                 brush = QtGui.QBrush(col,QtCore.Qt.DiagCrossPattern)
@@ -996,13 +1087,35 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.annotation = None
         self.currentLabelFile = ""
     
+    def getFile(self):
+        annotations      = [ "gtFine" ]
+        rawImagePatttern = ["leftImg8bit"]
+
+        dir_path    = os.path.dirname(os.path.realpath(__file__))
+        message     = 'Select image to get predictions' 
+        self.statusBar().showMessage(message)
+        fileDialog  = QtGui.QFileDialog.getOpenFileName(self, 'Select Image for prediction', 
+                                                        dir_path, 'Image files (*.jpg *.png *.gif)')
+        if rawImagePatttern[0] not in fileDialog:
+            self.getFile()
+        else:
+            filePred = QtGui.QFileDialog.getOpenFileName(self, 'Load the prediction File', 
+                                                        dir_path, 'Text Files (*.txt)')
+        
+        return fileDialog, filePred
+    
     # Replace getCityFromUser and load only one image
     def getImageFromUser(self):
-        restoreMessage = self.statusBar().currentMessage()
+        restoreMessage   = self.statusBar().currentMessage()
 
         annotations      = [ "gtFine" ]
         rawImagePatttern = ["leftImg8bit"]
-       
+
+        self.images, self.annotations  = self.getFile()
+        
+        self.loadImages()
+        self.imageChanged()
+        '''
         dlgTitle = "Select new Image for Predictions"
         message  = dlgTitle
         question = dlgTitle
@@ -1019,14 +1132,14 @@ class CityscapesViewer(QtGui.QMainWindow):
             self.statusBar().showMessage(restoreMessage)
 
             if ok and item:
-                '''
+                
                 # Check if test folder in order to load image only!! Test has no labels
                 (split,gt,city) = [ str(i) for i in item.split(', ') ]
                 if split == 'test' and not self.showDisparity:
                     self.transp = 0.1
                 else:
                     self.transp = 0.5
-                '''
+                
                 #print(str(items))
                 self.transp = 0.5
                 #print(os.path.normpath(dir_path))
@@ -1057,7 +1170,7 @@ class CityscapesViewer(QtGui.QMainWindow):
                 sys.exit()
 
         return                
-
+    '''
     '''
     def getCityFromUser(self):
         # Reset the status bar to this message when leaving
@@ -1150,6 +1263,7 @@ class CityscapesViewer(QtGui.QMainWindow):
             return ""
         filename = os.path.normpath(search[0])
         return filename
+
     # Get the filename where to load disparities
     # Returns empty string if not possible
     def getDisparityFilename( self ):
