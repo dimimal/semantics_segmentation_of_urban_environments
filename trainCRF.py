@@ -12,12 +12,52 @@ from cv2 import imread, imwrite
 from keras_contrib.layers import CRF 
 from dataGenerator import DataGenerator
 from keras.models import Model, Sequential, Input
-from keras.callbacks import ModelCheckpoint, CSVLogger
+from keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping, ReduceLROnPlateau
 from skimage.io import imread, imsave
 from skimage.color import gray2rgb
 from skimage.color import rgb2gray
 import matplotlib.pyplot as plt
-#%matplotlib inline
+from dataGenerator import DataGenerator
+from keras.utils import plot_model
+from keras.layers import Dense, Dropout, Flatten, AlphaDropout, core, Lambda
+from keras.models import Sequential, model_from_json
+from weighted_categorical_crossentropy import weighted_categorical_crossentropy, weighted_loss
+from BillinearUpsampling import BilinearUpSampling2D
+from sklearn.metrics import f1_score, classification_report, confusion_matrix, jaccard_similarity_score
+import keras.backend as K
+import keras
+from modelPredictor import computeMeanIou, plot_confusion_matrix
+import itertools
+from labels import listLabels
+import time
+
+
+sys.path.insert(0, r'./crfasrnn_keras/src/')
+from crfrnn_layer import CrfRnnLayer
+
+# Median Frequency Coefficients 
+coefficients = {0:0.0237995754847,
+                1:0.144286494916,
+                2:0.038448897913,
+                3:1.33901803472,
+                4:1.0,
+                5:0.715098627127,
+                6:4.20827446939,
+                7:1.58754122255,
+                8:0.0551054437019,
+                9:0.757994265912,
+                10:0.218245600783,
+                11:0.721125616748,
+                12:6.51048559366,
+                13:0.125434198729,
+                14:3.27995580458,
+                15:3.72813940546,
+                16:3.76817843552,
+                17:8.90686657342,
+                18:2.12162414027,
+                19:0.}
+
+coefficients = [key for index,key in coefficients.iteritems()]
 
 labels = {
     0 :(128, 64,128),
@@ -42,19 +82,23 @@ labels = {
     19 : (255, 255, 255)}
 
 #path = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/Training_Predictions/'
-trainFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/Training_Predictions/'
-valFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/Validation_Predictions/'
-testFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/Test_Predictions/'
-imagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_train_set_512/X_train_set_512_0001.npz'
+trainFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_train_set_512/'
+valFolder   = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_validation_set_512/'
+testFolder  = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_test_set_512/'
+imagePath   = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_train_set_512/X_train_set_512_0001.npz'
 
-patchSize = 512
+
+patchSize            = 512
 (img_rows, img_cols) = patchSize, patchSize 
-NUM_CLASSES = 20
-BATCH_SIZE = 4
-modelIndex = 1
+NUM_CLASSES          = 20
+BATCH_SIZE           = 1
+modelIndex           = 7
 
-checkpointPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/checkpoint_Weights_CRF_{}_{}.h5'.format(modelIndex, patchSize)
-lrCurvesPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/csv_curves_CRF_{}_{}.h5'.format(modelIndex, patchSize)
+weightsPath     = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/checkpoint_Weights_dense_{}_{}.h5'.format(modelIndex, patchSize)
+modelPath       = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/model_params_{}_{}.json'.format(modelIndex, patchSize)
+checkpointPath  = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/checkpoint_Weights_CRF_{}_{}.h5'.format(modelIndex, patchSize)
+lrCurvesPath    = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/csv_curves_CRF_{}_{}.h5'.format(modelIndex, patchSize)
+reportPath      = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/crf_report_{}_{}.txt'.format(modelIndex, patchSize)
 
 def loadCRF(x):
     d = dcrf.DenseCRF2D(x.shape[1], x.shape[2], 20)
@@ -108,20 +152,21 @@ def kerasCRF():
     model.summary()
     model.compile('adam', loss=crf.loss_function, metrics=[crf.accuracy])
     history = model.fit_generator(generator=data_gen.nextTrain(),
-                                      steps_per_epoch=data_gen.getSize(mode='Train')//batch_size,
+                                      steps_per_epoch=data_gen.getSize(mode='Train')//BATCH_SIZE,
                                       epochs=epochs,
                                       verbose=1, 
                                       validation_data=data_gen.nextVal(),
-                                      validation_steps=data_gen.getSize(mode='Val')//batch_size,
+                                      validation_steps=data_gen.getSize(mode='Val')//BATCH_SIZE,
                                       callbacks=[checkPoint, csv_logger])
 
     data_gen.computeTestClasses()
     print("--- %s seconds ---" % (time.time() - start_time))
-    save_model_params(model)
-    y_pred = model.predict_generator(data_gen.nextTest(), data_gen.getSize(mode='Test')//batch_size, verbose=1)
-    score = model.evaluate_generator(data_gen.nextTest(), data_gen.getSize(mode='Test')//batch_size)
+    #save_model_params(model)
+    y_pred = model.predict_generator(data_gen.nextTest(), data_gen.getSize(mode='Test')//BATCH_SIZE, verbose=1)
+    score = model.evaluate_generator(data_gen.nextTest(), data_gen.getSize(mode='Test')//BATCH_SIZE)
     print(score)
 
+"""
 def classification_report(y_true, y_pred, labels):
     '''Similar to the one in sklearn.metrics, reports per classs recall, precision and F1 score'''
     y_true = numpy.asarray(y_true).ravel()
@@ -144,7 +189,7 @@ def classification_report(y_true, y_pred, labels):
     report2 = zip(*[(r * s, p * s, f1 * s) for l, r, p, f1, s in report])
     N = len(y_true)
     print(formatter('avg / total', sum(report2[0]) / N, sum(report2[1]) / N, sum(report2[2]) / N, N) + '\n')
-
+"""
 """
 Function which returns the labelled image after applying CRF
 
@@ -243,9 +288,7 @@ def testCRF():
     
     annotated_image = np.load(trainFolder+'X_train_Predictions_1.npy')
     annotated_image = annotated_image[0,:,:,:-1]
-    
-    #annotated_image = np.load('image_predictions.txt')
-    #annotated_image = np.reshape(annotated_image, (512,512,20))
+    #
     output1 = crf(original_image, annotated_image, 'output_image_crf.png')
     output1 = label2color(output1)
 
@@ -257,6 +300,138 @@ def testCRF():
     plt.imshow(original_image)
     plt.figure()
     plt.imshow(output1)
+    plt.show()
+
+def crfRNN():
+    # Early stopping to avoid overfitting.
+    earlyStopping = EarlyStopping(monitor='val_loss', patience=12) 
+
+    # Logger callback for learning curves
+    csv_logger = CSVLogger(lrCurvesPath, append=True, separator=',')
+
+    # Checkpoint to save the weights with the best validation accuracy.
+    checkPoint = ModelCheckpoint(checkpointPath,
+                monitor='val_loss',
+                verbose=1,
+                save_best_only=True,
+                save_weights_only=True,
+                mode='min')
+
+    plateauCallback = ReduceLROnPlateau(monitor='val_loss',
+                factor=0.5,
+                patience=5,
+                min_lr=0.00005,
+                verbose=1,
+                cooldown=3)
+
+    # load json and create model
+    input_shape  = (img_rows,img_cols,3)
+    output_shape = (img_rows, img_cols, NUM_CLASSES) 
+    json_file = open(modelPath, 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
+
+    input_1 = Input(shape=output_shape)
+    input_2 = Input(shape=input_shape)
+
+    # Top model
+    #x = Lambda(lambda a: a[:, :, :, :-1], output_shape=(img_rows, img_cols, NUM_CLASSES-1))(input_1)
+    output1 = CrfRnnLayer(image_dims=(img_rows, img_cols),
+                         num_classes=NUM_CLASSES,
+                         theta_alpha=160.,
+                         theta_beta=3.,
+                         theta_gamma=3.,
+                         num_iterations=10,
+                         name='crfrnn')([input_1, input_2])
+    #
+    model       = Model(inputs=model.input, outputs=model.output, name='CNN')
+    top_model   = Model(inputs=[input_1, input_2], outputs=output1, name='CRF-RNN') 
+    full_model  = Model(inputs=model.input, outputs=top_model([model.output, model.input]), name='Full')
+    # Try 2
+    #new_model   = Model(inputs=model.input, outputs=model.output, name='CNN')
+    #top_model   = Model(inputs=[input_1, input_2], outputs=output1, name='CRF-RNN') 
+    #full_model  = Model(inputs=model.input, outputs=top_model([model.output, model.input]), name='Full')
+    # Train only crf 
+    for layer in model.layers:
+        layer.trainable = False
+
+    # evaluate loaded model on test data
+    full_model.compile( loss=weighted_loss(NUM_CLASSES, coefficients),
+                        optimizer=keras.optimizers.Adam(),
+                        metrics=['accuracy'] )
+    #data_gen.computeTestClasses()
+    # load weights into new model
+    if weightsPath:
+        model.load_weights(weightsPath)
+    print("Loaded model from disk")
+
+    #full_model.summary()
+
+    data_gen = DataGenerator(NUM_CLASSES, BATCH_SIZE, patchSize, patchSize, trainFolder, valFolder, testFolder)
+    full_model.fit_generator(generator=data_gen.nextTrain(),
+                                      steps_per_epoch=1,
+                                      epochs=1,
+                                      verbose=1, 
+                                      validation_data=data_gen.nextVal(),
+                                      validation_steps=1,
+                                      callbacks=[earlyStopping, plateauCallback, checkPoint, csv_logger])
+    
+    data_gen.computeTestClasses()
+    full_model.save('CNN_CRF-RNN_7_512.h5')
+    y_pred  = full_model.predict_generator(data_gen.nextTest(), data_gen.getSize(mode='Test')//BATCH_SIZE, verbose=1)
+    #y_pred  = full_model.predict_generator(data_gen.nextTest(), 1//BATCH_SIZE, verbose=1)
+    #print(y_pred.shape)
+    #print('Y_pred ::', y_pred[0,0,0,:])
+    '''
+    score   = full_model.evaluate_generator(data_gen.nextTest(), data_gen.getSize(mode='Test')//BATCH_SIZE)
+    
+    print('Test Loss:', score[0])
+    print('Test accuracy:', score[1])
+    '''
+    y_true = data_gen.getClasses(y_pred.shape[0])
+    #print('New IU:: '+ str(computeMeanIou(y_pred, y_true)))
+    #print( 'Tensorflow mean IoU:: ' + str(tf.metrics.mean_iou(tf.to_int32(y_true),tf.to_int32(y_pred))))
+    plot_results(y_true, y_pred)
+def plot_results(y_true, y_pred):    
+    #print('Test Loss:', score[0])
+    #print('Test accuracy:', score[1])
+
+    y_pred = np.argmax(y_pred, axis=-1)
+    y_true = np.argmax(y_true, axis=-1)
+    y_pred = np.reshape(y_pred, (y_pred.shape[0]*img_rows*img_cols))
+    y_true = np.reshape(y_true, (y_true.shape[0]*img_rows*img_cols))
+
+    report = classification_report(y_true, y_pred)
+    print(report)
+    # Create sample weight vector
+    '''
+    sample_weights = np.array([])
+    for value in np.nditer(y_pred):
+        sample_weights = np.append(sample_weights, weights[value])
+    '''
+    meanIoU = jaccard_similarity_score(y_true, y_pred, normalize=True)  
+
+    # Compute mean IoU
+    cfMatrix = confusion_matrix(y_true, y_pred)
+    pixelAcc, meanIoUfromcf = computeMeanIou(cfMatrix)
+
+    # Write report to txt
+    with open(reportPath,'w') as fileObj:
+        fileObj.write(report)
+        fileObj.write(str(meanIoU))
+        fileObj.write(str(meanIoUfromcf))
+    
+    print('----- Mean IoU ----- ')
+    print('------ %s -----------'%(str(meanIoU)))
+    print('---- Manual mean Iou from CF ------')
+    print('------ %s -----------'%(str(meanIoUfromcf)))
+    print('Pixel Accuracy::: {}'.format(pixelAcc))
+
+    cfMatrix = np.delete(cfMatrix, cfMatrix.shape[0]-1, axis=0)
+    cfMatrix = np.delete(cfMatrix, cfMatrix.shape[0]-1, axis=1)
+    plt.figure()
+    plot_confusion_matrix(cfMatrix, listLabels)
     plt.show()
 
 def main():
@@ -272,7 +447,7 @@ def main():
     #MAP = np.asarray(MAP, dtype='uint8')
     imwrite('crf_image_test.png', MAP)
     '''
-    testCRF()
-
+    #testCRF()
+    crfRNN()
 if __name__ == '__main__':
     main()
