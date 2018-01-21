@@ -93,8 +93,8 @@ class CityscapesViewer(QtGui.QMainWindow):
         # A gap that we  leave around the image as little border
         self.bordergap         = 20
         # The scale that was used, ie
-        # self.w = self.scale * self.image.width()
-        # self.h = self.scale * self.image.height()
+        #self.w = self.scale * self.image.width()
+        #self.h = self.scale * self.image.height()
         self.scale             = 1.0
         # Filenames of all images in current city
         self.images            = []
@@ -110,7 +110,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Index of the current image within the city folder
         #self.idx               = 0
         # All annotated objects in current image, i.e. list of labelObject
-        self.annotation        = []
+        self.annotation        = QtGui.QImage()
         # All prediction files that came from model
         self.predictions       = []
         # The current object the mouse points to. It's index in self.labels
@@ -581,11 +581,13 @@ class CityscapesViewer(QtGui.QMainWindow):
     def checkDims(self):
         if self.annotations.ndim == 1:
             self.annotations = np.reshape(self.annotations, (512,512))
+        
+        # Find the scale factors of the image
         fx               = 1024 / self.annotations.shape[0]
         fy               = 2048 / self.annotations.shape[1]
         shape = self.annotations.shape
-        self.annotations = cv.resize(self.annotations, (fx*shape[0], fy*shape[1]), interpolation=cv.INTER_NEAREST)
-        #assert(self.image.shape == self.annotations.shape)        
+
+        self.annotations = cv.resize(self.annotations, (fy*shape[0], fx*shape[1]), interpolation=cv.INTER_NEAREST)
     
     # Transform trainId labels to colors
     def labels2Color(self):
@@ -602,6 +604,9 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.annotations = np.asarray(self.annotations, dtype='uint8')
         self.checkDims()
         self.labels2Color()
+
+        # Labels to QImage
+        self.annotation  = self.toQImage(self.annotations)
 
         # Remeber the status bar message to restore it later
         restoreMessage = self.statusBar().currentMessage()
@@ -717,18 +722,19 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Update scale
         self.updateScale(qp)
         # Determine the object ID to highlight
-        self.getHighlightedObject(qp)
+        #self.getHighlightedObject(qp)
         # Draw the image first
         self.drawImage(qp)
-
+        '''
         if self.enableDisparity and self.showDisparity:
             # Draw the disparities on top
             overlay = self.drawDisp(qp)
         else:
-            # Draw the labels on top
-            overlay = self.drawLabels(qp)
-            # Draw the label name next to the mouse
-            self.drawLabelAtMouse(qp)
+        '''
+        # Draw the labels on top
+        overlay = self.drawLabels(qp)
+        # Draw the label name next to the mouse
+        self.drawLabelAtMouse(qp)
         
         # Draw the zoom
         self.drawZoom(qp, overlay)
@@ -802,8 +808,12 @@ class CityscapesViewer(QtGui.QMainWindow):
     def drawLabels(self, qp, ignore = []):
         if self.image.isNull() or self.w == 0 or self.h == 0:
             return
+        if self.annotation.isNull():
+            return
+        '''
         if not self.annotation:
             return
+        '''
 
         # The overlay is created in the viewing coordinates
         # This way, the drawing is more dense and the polygon edges are nicer
@@ -812,17 +822,44 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Finally we use the real QPainter to overlay the overlay-image on what is drawn so far
 
         # The image that is used to draw the overlays
-        overlay = QtGui.QImage( self.w, self.h, QtGui.QImage.Format_ARGB32_Premultiplied )
+        #overlay = QtGui.QImage( self.w, self.h, QtGui.QImage.Format_ARGB32_Premultiplied )
         # Fill the image with the default color
-        defaultLabel = name2label[self.defaultLabel]
-        col = QtGui.QColor( *defaultLabel.color )
-        overlay.fill( col )
+        #defaultLabel = name2label[self.defaultLabel]
+        #col = QtGui.QColor( *defaultLabel.color )
+        #overlay.fill( col )
+
         # Create a new QPainter that draws in the overlay image
         qp2 = QtGui.QPainter()
-        qp2.begin(overlay)
+        #qp2.begin(overlay)
+        qp2.begin(self.annotation)
+
+        # Horizontal offset
+        self.xoff  = self.bordergap
+        # Vertical offset
+        self.yoff  = self.toolbar.height() + self.bordergap
+        # We want to make sure to keep the image aspect ratio and to make it fit within the widget
+        # Without keeping the aspect ratio, each side of the image is scaled (multiplied) with
+        sx = float(qp.device().width()  - 2*self.xoff) / self.annotation.width()
+        sy = float(qp.device().height() - 2*self.yoff) / self.annotation.height()
+        # To keep the aspect ratio while making sure it fits, we use the minimum of both scales
+        # Remember the scale for later
+        self.scale = min( sx , sy )
+        # These are then the actual dimensions used
+        self.w     = self.scale * self.annotation.width()
+        self.h     = self.scale * self.annotation.height()
+
+        # Save the painters current setting to a stack
+        qp.save()
+        # Draw the image
+        qp.drawImage(QtCore.QRect( self.xoff, self.yoff, self.w, self.h ), self.image)
+        #qp2.drawImage(QtCore.QRect( self.xoff, self.yoff, self.w, self.h ), self.annotation)
+        
+        # Restore the saved setting from the stack
+        qp.restore()
 
         # The color of the outlines
-        qp2.setPen(QtGui.QColor('white'))
+        #qp2.setPen(QtGui.QColor('white'))
+        '''
         # Draw all objects
         for obj in self.annotation.objects:
 
@@ -855,7 +892,6 @@ class CityscapesViewer(QtGui.QMainWindow):
                 qp2.setBrush(brush)
 
             qp2.drawPolygon( polyToDraw )
-
         # Draw outline of selected object dotted
         if self.highlightObj:
             brush = QtGui.QBrush(QtCore.Qt.NoBrush)
@@ -864,6 +900,7 @@ class CityscapesViewer(QtGui.QMainWindow):
             polyToDraw = self.getPolygon(self.highlightObj) * QtGui.QTransform.fromScale(self.scale,self.scale)
             qp2.drawPolygon( polyToDraw )
 
+        '''
         # End the drawing of the overlay
         qp2.end()
         # Save QPainter settings to stack
@@ -871,36 +908,39 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Define transparency
         qp.setOpacity(self.transp)
         # Draw the overlay image
-        qp.drawImage(self.xoff, self.yoff, overlay)
+        #qp.drawImage(self.xoff, self.yoff, overlay)
+        qp.drawImage(QtCore.QRect( self.xoff, self.yoff, self.w, self.h ), self.annotation)
         # Restore settings
         qp.restore()
 
-        return overlay
+        return self.annotation
     
     # Numpy array to QImage function
-    def toQImage(im, copy=False):
+    def toQImage(self, im, copy=False):
         if im is None:
-            return QImage()
-
+            return QtGui.QImage()
+        
         if im.dtype == np.uint8:
             if len(im.shape) == 2:
-                qim = QImage(im.data, im.shape[1], im.shape[0], im.strides[0], QImage.Format_Indexed8)
+                qim = QtGui.QImage(im.data, im.shape[1], im.shape[0], im.strides[0], QtGui.QImage.Format_Indexed8)
                 qim.setColorTable(gray_color_table)
                 return qim.copy() if copy else qim
 
             elif len(im.shape) == 3:
                 if im.shape[2] == 3:
-                    qim = QImage(im.data, im.shape[1], im.shape[0], im.strides[0], QImage.Format_RGB888);
+                    qim = QtGui.QImage(im.data, im.shape[1], im.shape[0], im.strides[0], QtGui.QImage.Format_RGB888)
                     return qim.copy() if copy else qim
                 elif im.shape[2] == 4:
-                    qim = QImage(im.data, im.shape[1], im.shape[0], im.strides[0], QImage.Format_ARGB32);
+                    qim = QtGui.QImage(im.data, im.shape[1], im.shape[0], im.strides[0], QtGui.QImage.Format_ARGB32)
                     return qim.copy() if copy else qim
+        # Add failure message here!!
 
     # Draw the label name next to the mouse
     def drawLabelAtMouse(self, qp):
         # Nothing to do without a highlighted object
         if not self.highlightObj:
             return
+        
         # Nothing to without a mouse position
         if not self.mousePosOrig:
             return
@@ -989,6 +1029,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         qp.drawImage(view,overlay_scaled,sel) # Label Image
         qp.restore()
 
+    '''
     # Draw disparities
     def drawDisp( self , qp ):
         if not self.dispOverlay:
@@ -1004,8 +1045,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         qp.restore()
 
         return self.dispOverlay
-
-
+    '''
 
     #############################
     ## Mouse/keyboard events
@@ -1090,15 +1130,18 @@ class CityscapesViewer(QtGui.QMainWindow):
         action.setToolTip(tip)
 
     # Update the object that is selected by the current mouse curser
+    # Edw mporw na valc na fainontai ta annotated labels
     def updateMouseObject(self):
         self.mouseObj   = -1
         if self.mousePosScaled is None:
             return
+        '''
         for idx in reversed(range(len(self.annotation.objects))):
             obj = self.annotation.objects[idx]
             if self.getPolygon(obj).containsPoint(self.mousePosScaled, QtCore.Qt.OddEvenFill):
                 self.mouseObj = idx
                 break
+        '''
 
     # Clear the current labels
     def clearAnnotation(self):
@@ -1127,7 +1170,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         restoreMessage   = self.statusBar().currentMessage()
 
         annotations      = [ "gtFine" ]
-        rawImagePatttern = ["leftImg8bit"]
+        rawImagePatttern = [ "leftImg8bit" ]
 
         self.images, self.annotations  = self.getFile()
         
