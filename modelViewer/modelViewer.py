@@ -40,7 +40,7 @@ except:
 
 # Import relative modules
 from helpers.annotation import Annotation
-from helpers.labels import name2label, assureSingleInstanceName, trainId2color
+from helpers.labels import name2label, assureSingleInstanceName, trainId2color, trainId2label
 
 
 #################
@@ -594,7 +594,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         temp = np.empty((self.annotations.shape[0], self.annotations.shape[1], 3), dtype='uint8')
         for index, value in np.ndenumerate(self.annotations):
             temp[index[0], index[1]] = trainId2color[value]
-        self.annotations = temp
+        self.annotation = temp
             
     # The new loadLabels Function
     def loadLabels(self):
@@ -606,7 +606,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.labels2Color()
 
         # Labels to QImage
-        self.annotation  = self.toQImage(self.annotations)
+        self.annotation  = self.toQImage(self.annotation)
 
         # Remeber the status bar message to restore it later
         restoreMessage = self.statusBar().currentMessage()
@@ -832,22 +832,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         qp2 = QtGui.QPainter()
         #qp2.begin(overlay)
         qp2.begin(self.annotation)
-
-        # Horizontal offset
-        self.xoff  = self.bordergap
-        # Vertical offset
-        self.yoff  = self.toolbar.height() + self.bordergap
-        # We want to make sure to keep the image aspect ratio and to make it fit within the widget
-        # Without keeping the aspect ratio, each side of the image is scaled (multiplied) with
-        sx = float(qp.device().width()  - 2*self.xoff) / self.annotation.width()
-        sy = float(qp.device().height() - 2*self.yoff) / self.annotation.height()
-        # To keep the aspect ratio while making sure it fits, we use the minimum of both scales
-        # Remember the scale for later
-        self.scale = min( sx , sy )
-        # These are then the actual dimensions used
-        self.w     = self.scale * self.annotation.width()
-        self.h     = self.scale * self.annotation.height()
-
+        
         # Save the painters current setting to a stack
         qp.save()
         # Draw the image
@@ -915,13 +900,14 @@ class CityscapesViewer(QtGui.QMainWindow):
 
         return self.annotation
     
-    # Numpy array to QImage function
+    # Numpy array to QImage 
     def toQImage(self, im, copy=False):
         if im is None:
             return QtGui.QImage()
         
         if im.dtype == np.uint8:
             if len(im.shape) == 2:
+                gray_color_table = [qRgb(i, i, i) for i in range(256)]
                 qim = QtGui.QImage(im.data, im.shape[1], im.shape[0], im.strides[0], QtGui.QImage.Format_Indexed8)
                 qim.setColorTable(gray_color_table)
                 return qim.copy() if copy else qim
@@ -938,9 +924,12 @@ class CityscapesViewer(QtGui.QMainWindow):
     # Draw the label name next to the mouse
     def drawLabelAtMouse(self, qp):
         # Nothing to do without a highlighted object
+        '''
         if not self.highlightObj:
             return
-        
+        if not self.annotations.all():
+            return
+        '''
         # Nothing to without a mouse position
         if not self.mousePosOrig:
             return
@@ -950,12 +939,16 @@ class CityscapesViewer(QtGui.QMainWindow):
 
         # That is the mouse positiong
         mouse = self.mousePosOrig
-
+        #print(mouse.x(), mouse.y())
+        #print(self.annotations.shape)
         # Will show zoom
         showZoom = self.zoom and not self.image.isNull() and self.w and self.h
 
+        #mouseText = self.highlightObj.label
+        # The label of current cursor position
+        trainIdIndex  = self.annotations[int(mouse.y()), int(mouse.x())]
         # The text that is written next to the mouse
-        mouseText = self.highlightObj.label
+        mouseText     = trainId2label[trainIdIndex][0]
 
         # Where to write the text
         # Depends on the zoom (additional offset to mouse to make space for zoom?)
@@ -1157,6 +1150,8 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.statusBar().showMessage(message)
         fileDialog  = QtGui.QFileDialog.getOpenFileName(self, 'Select Image for prediction', 
                                                         dir_path, 'Image files (*.jpg *.png *.gif)')
+        # Put some error message here
+        # fix dat shit!
         if rawImagePatttern[0] not in fileDialog:
             self.getFile()
         else:
