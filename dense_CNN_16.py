@@ -22,56 +22,55 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, C
 from dataGenerator import DataGenerator
 from sklearn.metrics import classification_report, confusion_matrix, jaccard_similarity_score
 from BillinearUpsampling import BilinearUpSampling2D
-#from customMaxLayers import MemoMaxPooling2D, MemoUpSampling2D
-#from keras_contrib.layers import CRF
 import itertools
 
-debug_mode = False
-patchSize = 512
-modelIndex = 7
-channels = 3
+debug_mode      = False
+patchSize       = 512
+modelIndex      = 7
+channels        = 3
 # =============================== Declare the dataset Paths ===========================================================================
-trainFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_train_set_{}'.format(patchSize)
-valFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_validation_set_{}'.format(patchSize)
-testFolder = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_test_set_{}'.format(patchSize)
+trainFolder     = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_train_set_{}'.format(patchSize)
+valFolder       = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_validation_set_{}'.format(patchSize)
+testFolder      = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_test_set_{}'.format(patchSize)
 
 # ============================ Declare the paths for the parameters of our network ====================================================
-weightsPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/Weights_dense_{}_{}.h5'.format(modelIndex, patchSize)
-checkpointPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/checkpoint_Weights_dense_{}_{}.h5'.format(modelIndex, patchSize)
-lrCurvesPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/dense_lrCurves_{}_{}.csv'.format(modelIndex, patchSize)
-modelParamPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/model_params_{}_{}.json'.format(modelIndex, patchSize)
-modelPicturePath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/model_dense_{}_{}.png'.format(modelIndex, patchSize)
-reportPath = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/report_dense_{}_{}.txt'.format(modelIndex, patchSize)
+weightsPath         = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/Weights_dense_{}_{}.h5'.format(modelIndex, patchSize)
+checkpointPath      = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/checkpoint_Weights_dense_{}_{}.h5'.format(modelIndex, patchSize)
+checkpointPath_2    = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/checkpoint_Weights_dense_data_aug_{}_{}.h5'.format(modelIndex, patchSize)
+lrCurvesPath        = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/dense_lrCurves_{}_{}.csv'.format(modelIndex, patchSize)
+modelParamPath      = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/model_params_{}_{}.json'.format(modelIndex, patchSize)
+modelPicturePath    = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/model_dense_{}_{}.png'.format(modelIndex, patchSize)
+reportPath          = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/report_dense_{}_{}.txt'.format(modelIndex, patchSize)
 
-np.random.seed(25)
+#np.random.seed(25)
 
-batch_size = 2
+batch_size  = 2
 num_classes = 20   
-epochs = 60
+epochs      = 20
 img_rows, img_cols = patchSize, patchSize
-input_shape=(img_rows, img_cols, channels)
+input_shape        =(img_rows, img_cols, channels)
 
 # Define the weights for each class, zero for unlabeled class
-class_weights ={0:0.369147096473,
-                1:0.0581625322891,
-                2:0.245440987913,
-                3:0.00421239652911,
-                4:0.00338667573584,
-                5:0.0121238357347,
-                6:0.00246308928006,
-                7:0.00630047087614,
-                8:0.169754635332,
-                9:0.0158016639991,
-                10:0.0274461238615,
-                11:0.0087193852898,
-                12:0.000472286941215,
-                13:0.0703889305398,
-                14:0.000972789923577,
-                15:0.00183577125633,
-                16:3.94780130166e-05,
-                17:0.000999417066368,
-                18:0.00233243294596,
-                19:0.0}
+class_weights ={ 0  : 0.99656007894741849,
+                 1  : 2.8445139066582898,
+                 2  : 1.4046987357420828,
+                 3  : 5.4697235464278799,
+                 4  : 5.6879064475979844,
+                 5  : 4.4125818686493981,
+                 6  : 6.0063389119988706,
+                 7  : 5.0671309061332677,
+                 8  : 1.77340120610025,
+                 9  : 4.1476400280958643,
+                 10 : 3.5955303282286066,
+                 11 : 4.7422065378350791,
+                 12 : 7.6579238307880901,
+                 13 : 2.6537192648316865,
+                 14 : 6.9353424049711085,
+                 15 : 6.3002905826011304,
+                 16 : 10.139766673525715,
+                 17 : 6.9083383825860052,
+                 18 : 6.060843373368753,
+                 19 : 0.0}
 
 # Median Frequency Coefficients 
 coefficients = {0:0.0237995754847,
@@ -119,166 +118,6 @@ def computeMeanIou(matrix):
     pixelAcc = np.true_divide(np.sum(pixelAcc), num_classes)
     return pixelAcc, perClassIou, meanIoU 
 
-# Keras model function for 16x16 patch size    
-def fcn_16(patchSize, channels):
-    input_shape = (patchSize, patchSize, channels)        
-    inputs = Input(shape=input_shape)
-    
-    # Block 1
-    x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_1_32')(inputs)
-    #x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_2_32')(x)
-    #x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_2_32')(x)
-    # Block 2
-    # Block 3
-    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_2_64')(x)
-    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_3_64')(x)
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_4_128')(x)
-    # Block 4
-    x = Conv2D(512, (1,1), padding='valid', activation='selu', kernel_initializer='lecun_normal', name='Conv_5_512')(x)
-    
-    #x = MaxPooling2D(pool_size=(2, 2))()
-    #x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_7_256')(x)
-    #x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_8_256')(x)
-    #Block 5
-    x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='ConvT_1_128')(x)
-    x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='ConvT_2_64')(x)
-    x = Conv2DTranspose(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='ConvT_3_32')(x)
-    #x = Conv2DTranspose(32, (1,1), padding='valid', activation='selu', kernel_initializer='lecun_normal', name='ConvT_4_32')(x)
-
-    predictions = Conv2DTranspose(num_classes, (1,1), kernel_initializer='lecun_normal', name='output')(x)
-
-    #predictions = core.Activation('softmax')(x)
-
-    model = Model(inputs=inputs, outputs=predictions)
-
-    return model
-    
-def fcn_32(patchSize, channels):
-    input_shape = (patchSize, patchSize, channels)        
-    inputs = Input(shape=input_shape)
-
-    x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(inputs)
-    x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    #
-    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    #
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = MaxPooling2D(pool_size=(2, 2))(x)
-    
-    conv_1 = Conv2D(128, (3,3), dilation_rate=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    conv_1 = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(conv_1)
-    conv_1 = Conv2D(64, (1,1), padding='valid', activation='selu', kernel_initializer='lecun_normal')(conv_1)
-
-    conv_2 = Conv2D(128, (3,3), dilation_rate=(3, 3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    conv_2 = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(conv_2)
-    conv_2 = Conv2D(64, (1,1), padding='valid', activation='selu', kernel_initializer='lecun_normal')(conv_2)
-    #
-    conv_3 = Conv2D(128, (3,3), dilation_rate=(5, 5), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    conv_3 = Conv2D(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(conv_3)
-    conv_3 = Conv2D(64, (1,1), padding='valid', activation='selu', kernel_initializer='lecun_normal')(conv_3)
-    #
-    x = Add()([conv_1, conv_2, conv_3])
-    x = BilinearUpSampling2D(size=(2, 2))(x)
-    x = Conv2DTranspose(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal')(x)
-
-    predictions = core.Activation('softmax')(x)
-
-    model = Model(inputs=inputs, outputs=predictions)
-
-    model.summary()
-    model.compile(loss=weighted_categorical_crossentropy(weights) ,
-                  optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
-                  metrics=['accuracy'])
-    '''
-    if checkpointPath:
-        model.load_weights(checkpointPath)
-    
-    return model
-    '''
-
-def fcn_64(patchSize, channels):
-    input_shape = (patchSize, patchSize, channels)        
-    inputs = Input(shape=input_shape)
-
-    x = Conv2D(64, (3,3), activation='selu', padding='same', kernel_initializer='lecun_normal')(inputs)
-    x = Conv2D(64, (3,3), activation='selu', padding='same', kernel_initializer='lecun_normal')(x)
-    x = MaxPooling2D(pool_size=(2, 2))(x)
-    #
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = MaxPooling2D(pool_size=(2, 2))(x)
-    #
-    x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = MaxPooling2D(pool_size=(2, 2))(x)
-    #    
-    #x = BilinearUpSampling2D(size=(2, 2))(x)
-    x = Conv2DTranspose(256, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2DTranspose(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    #
-    #x = BilinearUpSampling2D(size=(2, 2))(x)
-    x = Conv2DTranspose(256, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2DTranspose(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    #
-    x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    #
-    #x = AlphaDropout(0.1)(x)
-    #
-    predictions = Conv2DTranspose(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal')(x)
-
-    #predictions = core.Activation('softmax')(x)
-
-    model = Model(inputs=inputs, outputs=predictions)
-
-    model.summary()
-    model.compile(loss=weighted_categorical_crossentropy(weights) ,
-                  optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
-                  metrics=['accuracy'])
-    
-    if os.path.exists(weightsPath):
-        model.load_weights(weightsPath)
-    
-    
-    return model
-
-def fcn_128(patchSize, channels):
-    input_shape = (patchSize, patchSize, channels)        
-    inputs = Input(shape=input_shape)
-
-    x = Conv2D(64, (3,3), activation='selu', padding='same', kernel_initializer='lecun_normal')(inputs)
-    x = Conv2D(64, (3,3), activation='selu', padding='same', kernel_initializer='lecun_normal')(x)
-    x = MaxPooling2D(pool_size=(2, 2))(x)
-    #
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = MaxPooling2D(pool_size=(2, 2))(x)
-    #
-    x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = MaxPooling2D(pool_size=(2, 2))(x)
-    #
-    x = Conv2DTranspose(256, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2DTranspose(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    #
-    x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    #
-    x = Conv2DTranspose(64, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
-    #
-    #x = AlphaDropout(0.1)(x)
-    #
-    x = Conv2DTranspose(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal')(x)
-
-    predictions = core.Activation('softmax')(x)
-
-    model = Model(inputs=inputs, outputs=predictions)
-
-    return model
 
 def fcn_512(patchSize, channels):
     input_shape = (patchSize, patchSize, channels)        
@@ -321,39 +160,35 @@ def fcn_512(patchSize, channels):
     atrous_5 = Conv2D(128, (1,1), padding='valid', activation='selu', kernel_initializer='lecun_normal', name='Atrous_5_3')(atrous_5)
     x = Add(name='Fusion')([atrous_1, atrous_2, atrous_3, atrous_4, atrous_5])
     #
-    x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_1')(x)
+    x = BilinearUpSampling2D(size=(2, 2))(x)
+    #x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_1')(x)
     x = Conv2DTranspose(128, (3,3),  padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_2')(x)
     #    x = Conv2DTranspose(128, (3,3), activation='selu',  kernel_initializer='lecun_normal')(x)
     #    
-    x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_3')(x)
+    x = BilinearUpSampling2D(size=(2, 2))(x)
+    #x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_3')(x)
     x = Conv2DTranspose(128, (3,3),  padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_4')(x)
     #   x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     #
-    x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_5')(x)
+    x = BilinearUpSampling2D(size=(2, 2))(x)
+    #x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_5')(x)
     x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_6')(x)
     #    x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     #
-    x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_7')(x)
+    x = BilinearUpSampling2D(size=(2, 2))(x)
+    #x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_7')(x)
     x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_8')(x)
     #    x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     predictions = Conv2DTranspose(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal', name='Deconv_9')(x)
     
-    #predictions = core.Activation('softmax')(x)
+    #predictions = core.Activation('softmax')(predictions)
 
     model = Model(inputs=inputs, outputs=predictions)
 
-    '''
-    model.summary()
-    model.compile(loss=weighted_categorical_crossentropy(weights),
-                  optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
-                  metrics=['accuracy'])
-    if weightsPath:
-        model.load_weights(weightsPath)
     
-    '''
     return model
 
-def plot_results(history, y_true, y_pred, score):    
+def plot_results(history, y_true, y_pred, score, cfMatrix=False):    
     print('Test Loss:', score[0])
     print('Test accuracy:', score[1])
 
@@ -389,27 +224,28 @@ def plot_results(history, y_true, y_pred, score):
     meanIoU = jaccard_similarity_score(y_true, y_pred)  
 
     # Compute mean IoU
-    cfMatrix = confusion_matrix(y_true, y_pred)
-    meanAcc, labelIou, meanIoUfromcf = computeMeanIou(cfMatrix)
+    #meanAcc, labelIou, meanIoUfromcf = computeMeanIou(cfMatrix)
     
     print('----- Mean IoU ----- ')
     print('------ %s -----------'%(str(meanIoU)))
-    print('---- Manual mean Iou from CF ------')
-    print('------ %s -----------'%(str(meanIoUfromcf)))
-    print('------ Pixel Accuracy ----')
-    print('---------- {} -------------'.format(meanAcc))
+    #print('---- Manual mean Iou from CF ------')
+    #print('------ %s -----------'%(str(meanIoUfromcf)))
+    #print('------ Pixel Accuracy ----')
+    #print('---------- {} -------------'.format(meanAcc))
     # Remove the last label
-    cfMatrix = np.delete(cfMatrix, cfMatrix.shape[0]-1, axis=0)
-    cfMatrix = np.delete(cfMatrix, cfMatrix.shape[0]-1, axis=1)   
-    plt.figure()
-    plot_confusion_matrix(cfMatrix, labels.listLabels)
-    plt.show()
+    if cfMatrix:
+        cfMatrix = confusion_matrix(y_true, y_pred)
+        cfMatrix = np.delete(cfMatrix, cfMatrix.shape[0]-1, axis=0)
+        cfMatrix = np.delete(cfMatrix, cfMatrix.shape[0]-1, axis=1)   
+        plt.figure()
+        plot_confusion_matrix(cfMatrix, labels.listLabels)
+        plt.show()
 
     # Write report to txt
     with open(reportPath,'w') as fileObj:
         fileObj.write(report)
         fileObj.write(str(meanIoU))
-        fileObj.write(str(meanIoUfromcf))
+        #fileObj.write(str(meanIoUfromcf))
 
 def plot_confusion_matrix(cm, 
                           classes,
@@ -463,7 +299,7 @@ def main():
     csv_logger = CSVLogger(lrCurvesPath, append=True, separator=',')
 
     # Checkpoint to save the weights with the best validation accuracy.
-    checkPoint = ModelCheckpoint(checkpointPath,
+    checkPoint = ModelCheckpoint(checkpointPath_2,
                 monitor='val_loss',
                 verbose=1,
                 save_best_only=True,
@@ -478,75 +314,35 @@ def main():
                 cooldown=3)
 
     # Instantiate data generator object
-    data_gen = DataGenerator(num_classes, batch_size, img_rows, img_cols, trainFolder, valFolder, testFolder)
+    data_gen = DataGenerator(num_classes, 
+                             batch_size, 
+                             img_rows, 
+                             img_cols, 
+                             trainFolder, 
+                             valFolder, 
+                             testFolder,
+                             zoom_range=[0.5, 2.0],
+                             shear_range=0.,
+                             width_shift_range=0.2,
+                             height_shift_range=0.2,
+                             horizontal_flip=True,
+                             rotation_range=15.)
 
-    if patchSize == 16:
-        if os.path.exists(modelParamPath):
-            json_file = open(modelParamPath, 'r')
-            loaded_model_json = json_file.read()
-            json_file.close()
-            model = model_from_json(loaded_model_json)
-            model.load_weights(checkpointPath)
-        else:
-            model = fcn_16(patchSize, channels)
-        model.summary()
-        model.compile(loss=weighted_loss(num_classes, coefficients) ,
-                  optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
-                  metrics=['accuracy'])
-    elif patchSize == 32:
+    
+    if patchSize == 512:
         if os.path.exists(modelParamPath):
             json_file = open(modelParamPath, 'r')
             loaded_model_json = json_file.read()
             json_file.close()
             model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
-            model.load_weights(checkpointPath)
-        else:
-            model = fcn_32(patchSize, channels)
-        model.summary()
-        model.compile(loss=weighted_loss(num_classes, coefficients) ,
-                  optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
-                  metrics=['accuracy'])
-    elif patchSize == 64:
-        if os.path.exists(modelParamPath):
-            json_file = open(modelParamPath, 'r')
-            loaded_model_json = json_file.read()
-            json_file.close()
-            model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
-            model.load_weights(checkpointPath)
-        else:
-            model = fcn_64(patchSize, channels)
-        model.summary()
-        model.compile(loss=weighted_loss(num_classes, coefficients) ,
-                  optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
-                  metrics=['accuracy'])    
-    elif patchSize == 128:
-        if os.path.exists(modelParamPath):
-            json_file = open(modelParamPath, 'r')
-            loaded_model_json = json_file.read()
-            json_file.close()
-            model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
-            model.load_weights(checkpointPath)
-            print('Weights Loaded\n')
-        else:
-            model = fcn_128(patchSize, channels)
-        model.summary()
-        model.compile(loss=weighted_categorical_crossentropy(weights),
-                  optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
-                  metrics=['accuracy'])
-    elif patchSize == 512:
-        if os.path.exists(modelParamPath):
-            json_file = open(modelParamPath, 'r')
-            loaded_model_json = json_file.read()
-            json_file.close()
-            model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
-            model.load_weights(checkpointPath)
-            print('Weights Loaded\n')
         else:
             model = fcn_512(patchSize, channels)
         model.summary()
         model.compile(loss=weighted_loss(num_classes, coefficients),
                   optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
                   metrics=['accuracy'])
+        model.load_weights(checkpointPath)
+        print('Weights Loaded\n')
 
     # ================================== Start Training ====================================== #
     start_time = time.time()

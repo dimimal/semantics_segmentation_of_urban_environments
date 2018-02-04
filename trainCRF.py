@@ -87,7 +87,7 @@ valFolder   = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg
 testFolder  = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_test_set_512/'
 imagePath   = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_train_set_512/X_train_set_512_0001.npz'
 
-
+epochs               = 5
 patchSize            = 512
 (img_rows, img_cols) = patchSize, patchSize 
 NUM_CLASSES          = 20
@@ -97,8 +97,9 @@ modelIndex           = 7
 weightsPath     = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/checkpoint_Weights_dense_{}_{}.h5'.format(modelIndex, patchSize)
 modelPath       = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/model_params_{}_{}.json'.format(modelIndex, patchSize)
 checkpointPath  = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/checkpoint_Weights_CRF_{}_{}.h5'.format(modelIndex, patchSize)
-lrCurvesPath    = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/csv_curves_CRF_{}_{}.h5'.format(modelIndex, patchSize)
-reportPath      = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/crf_report_{}_{}.txt'.format(modelIndex, patchSize)
+checkpointPath_2  = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/checkpoint_Weights_CRF_{}_{}_2.h5'.format(modelIndex, patchSize)
+lrCurvesPath    = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/csv_curves_CRF_{}_{}_2.h5'.format(modelIndex, patchSize)
+reportPath      = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/crf_report_{}_{}_2.txt'.format(modelIndex, patchSize)
 
 def loadCRF(x):
     d = dcrf.DenseCRF2D(x.shape[1], x.shape[2], 20)
@@ -278,7 +279,7 @@ def crf(original_image, annotated_image, output_image, use_2d = True):
     # Convert the MAP (labels) back to the corresponding colors and save the image.
     # Note that there is no "unknown" here anymore, no matter what we had at first.
     #MAP = colorize[MAP,:]   
-    imsave(output_image, MAP)
+    #imsave(output_image, MAP)
     return MAP
 
 def testCRF():
@@ -310,7 +311,7 @@ def crfRNN():
     csv_logger = CSVLogger(lrCurvesPath, append=True, separator=',')
 
     # Checkpoint to save the weights with the best validation accuracy.
-    checkPoint = ModelCheckpoint(checkpointPath,
+    checkPoint = ModelCheckpoint(checkpointPath_2,
                 monitor='val_loss',
                 verbose=1,
                 save_best_only=True,
@@ -342,7 +343,7 @@ def crfRNN():
                          theta_alpha=160.,
                          theta_beta=3.,
                          theta_gamma=3.,
-                         num_iterations=10,
+                         num_iterations=3,
                          name='crfrnn')([input_1, input_2])
     #
     model       = Model(inputs=model.input, outputs=model.output, name='CNN')
@@ -353,32 +354,35 @@ def crfRNN():
     #top_model   = Model(inputs=[input_1, input_2], outputs=output1, name='CRF-RNN') 
     #full_model  = Model(inputs=model.input, outputs=top_model([model.output, model.input]), name='Full')
     # Train only crf 
-    for layer in model.layers:
+    '''
+    for layer in model.layers[:13]:
         layer.trainable = False
-
+        #print(layer.name)
+    '''
+    #sys.exit(1)
     # evaluate loaded model on test data
     full_model.compile( loss=weighted_loss(NUM_CLASSES, coefficients),
-                        optimizer=keras.optimizers.Adam(),
+                        optimizer=keras.optimizers.SGD(lr=0.0000001, momentum=0.9) ,
                         metrics=['accuracy'] )
     #data_gen.computeTestClasses()
     # load weights into new model
-    if weightsPath:
-        model.load_weights(weightsPath)
+    if os.path.exists( checkpointPath):
+        full_model.load_weights(checkpointPath)
     print("Loaded model from disk")
 
     #full_model.summary()
 
     data_gen = DataGenerator(NUM_CLASSES, BATCH_SIZE, patchSize, patchSize, trainFolder, valFolder, testFolder)
     full_model.fit_generator(generator=data_gen.nextTrain(),
-                                      steps_per_epoch=1,
-                                      epochs=1,
+                                      steps_per_epoch=data_gen.getSize(mode='Train'),
+                                      epochs=epochs,
                                       verbose=1, 
                                       validation_data=data_gen.nextVal(),
-                                      validation_steps=1,
+                                      validation_steps=200,
                                       callbacks=[earlyStopping, plateauCallback, checkPoint, csv_logger])
     
     data_gen.computeTestClasses()
-    full_model.save('CNN_CRF-RNN_7_512.h5')
+    full_model.save('CNN_CRF-RNN_7_2_512.h5')
     y_pred  = full_model.predict_generator(data_gen.nextTest(), data_gen.getSize(mode='Test')//BATCH_SIZE, verbose=1)
     #y_pred  = full_model.predict_generator(data_gen.nextTest(), 1//BATCH_SIZE, verbose=1)
     #print(y_pred.shape)
