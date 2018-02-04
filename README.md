@@ -19,9 +19,7 @@ This is my undergraduate dissertation project.
 
 
 ## Results
-![Input Image](https://github.com/dimimal/semantics_segmentation_of_urban_environments/blob/master/test_images/Original_frankfurt_000000_015676_leftImg8bit.png)
-![Ground Truth](https://github.com/dimimal/semantics_segmentation_of_urban_environments/blob/master/test_images/frankfurt_000000_015676_gtFine_color.png)
-![Output Predictions](https://github.com/dimimal/semantics_segmentation_of_urban_environments/blob/master/test_images/frankfurt_000000_015676_leftImg8bit_median_7_10_1024.png)
+![Input Image](https://github.com/dimimal/semantics_segmentation_of_urban_environments/blob/master/test_images/all_in_one.png)
 
 ### Installing
 Some guides will be available as soon as the project ends. 
