@@ -1156,7 +1156,7 @@ class CityscapesViewer(QtGui.QMainWindow):
             self.getFile()
         else:
             filePred = QtGui.QFileDialog.getOpenFileName(self, 'Load the prediction File', 
-                                                        dir_path, 'Text Files (*.txt)')
+                                                        dir_path, 'Text Files or Image Files (*.txt)')
         
         return fileDialog, filePred
     
