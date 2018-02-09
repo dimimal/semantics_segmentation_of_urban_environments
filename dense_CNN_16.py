@@ -26,7 +26,7 @@ import itertools
 
 debug_mode      = False
 patchSize       = 512
-modelIndex      = 7
+modelIndex      = 11
 channels        = 3
 # =============================== Declare the dataset Paths ===========================================================================
 trainFolder     = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_train_set_{}'.format(patchSize)
@@ -73,25 +73,25 @@ class_weights ={ 0  : 0.99656007894741849,
                  19 : 0.0}
 
 # Median Frequency Coefficients 
-coefficients = {0:0.0237995754847,
-                1:0.144286494916,
-                2:0.038448897913,
-                3:1.33901803472,
-                4:1.0,
-                5:0.715098627127,
-                6:4.20827446939,
-                7:1.58754122255,
-                8:0.0551054437019,
-                9:0.757994265912,
-                10:0.218245600783,
-                11:0.721125616748,
-                12:6.51048559366,
-                13:0.125434198729,
-                14:3.27995580458,
-                15:3.72813940546,
-                16:3.76817843552,
-                17:8.90686657342,
-                18:2.12162414027,
+coefficients = {0:1.,
+                1:1.,
+                2:1.,
+                3:1.,
+                4:1.,
+                5:1.,
+                6:1.,
+                7:1.,
+                8:1.,
+                9:1.,
+                10:1.,
+                11:1.,
+                12:1.,
+                13:1.,
+                14:1.,
+                15:1.,
+                16:1.,
+                17:1.,
+                18:1.,
                 19:0.}
 
 coefficients = [key for index,key in coefficients.iteritems()]
@@ -335,14 +335,18 @@ def main():
             loaded_model_json = json_file.read()
             json_file.close()
             model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
+            model.summary()
+            model.compile(loss=weighted_loss(num_classes, coefficients),
+                      optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
+                      metrics=['accuracy'])
+            model.load_weights(checkpointPath)
+            print('Weights Loaded\n')
         else:
             model = fcn_512(patchSize, channels)
-        model.summary()
-        model.compile(loss=weighted_loss(num_classes, coefficients),
-                  optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
-                  metrics=['accuracy'])
-        model.load_weights(checkpointPath)
-        print('Weights Loaded\n')
+            model.summary()
+            model.compile(loss=weighted_loss(num_classes, coefficients),
+                      optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
+                      metrics=['accuracy'])
 
     # ================================== Start Training ====================================== #
     start_time = time.time()
