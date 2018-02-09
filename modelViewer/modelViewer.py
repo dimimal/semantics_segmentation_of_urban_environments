@@ -587,7 +587,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         fy               = 2048 / self.annotations.shape[1]
         shape = self.annotations.shape
 
-        self.annotations = cv.resize(self.annotations, (fy*shape[0], fx*shape[1]), interpolation=cv.INTER_NEAREST)
+        self.annotations = cv.resize(self.annotations, (fx*shape[1], fy*shape[0]), interpolation=cv.INTER_NEAREST)
     
     # Transform trainId labels to colors
     def labels2Color(self):
@@ -1128,15 +1128,9 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.mouseObj   = -1
         if self.mousePosScaled is None:
             return
-        '''
-        for idx in reversed(range(len(self.annotation.objects))):
-            obj = self.annotation.objects[idx]
-            if self.getPolygon(obj).containsPoint(self.mousePosScaled, QtCore.Qt.OddEvenFill):
-                self.mouseObj = idx
-                break
-        '''
-
+        
     # Clear the current labels
+    # 
     def clearAnnotation(self):
         self.annotation = None
         self.currentLabelFile = ""
