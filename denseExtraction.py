@@ -12,9 +12,9 @@ import re
 trainImageSet = None
 valImageSet = None
 testImageSet = None
-offset = 50000 # how many samples per file
+offset = 500 # how many samples per file
 mode = 'Full' # select full for whole image extraction or Patch for patch extraction
-patchSize = 32
+patchSize = 512
 img_rows, img_cols = 512, 512
 rawImagePattern = 'leftImg8bit.png'
 finePattern = 'gtFine_labelTrainIds.png'
@@ -27,9 +27,9 @@ if mode == 'Patch':
 	outValImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_validation_set_'+str(patchSize)+'/'
 	outTestImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_test_set_'+str(patchSize)+'/'
 else:
-	outTrainImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_train_set_full/'
-	outValImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_validation_set_full/'
-	outTestImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_test_set_full/'
+	outTrainImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_train_set_{}/'.format(patchSize)
+	outValImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_validation_set_{}/'.format(patchSize)
+	outTestImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_test_set_{}/'.format(patchSize)
 
 # Train set Path
 trainImagePath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/resized_train'
@@ -102,13 +102,18 @@ def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern, mode):
 					imLabels = np.array(label)
 					imLabels = np.clip(imLabels, 0, 19)
 					#print(imLabels.shape)
+					# 2nd Try
+					'''
 					if imArray.size == 0:
 						imArray = im
 						yLabels = imLabels
 					else:
 						imArray = np.concatenate((imArray, im))
 						yLabels = np.concatenate((yLabels, imLabels))			
-
+					'''
+					# Old Try
+					
+					# 		
 					if index == offset-1:
 						np.save(x_Handler, imArray)
 						np.save(y_Handler, yLabels)
@@ -135,6 +140,7 @@ def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern, mode):
 				skipIndex +=1
 				continue
 			print(counter)
+			'''
 			if imageSet is not None and counter == imageSet: # Extact patches from a number of frames
 				if not x_Handler.closed and not y_Handler.closed:
 					np.save(x_Handler, imArray)
@@ -144,7 +150,7 @@ def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern, mode):
 					imArray = np.array([])
 					yLabels = np.array([])
 				return
-
+			'''
 			image = io.imread(imagepath+'/'+file)
 			h, w, c  = image.shape
 			# load the annoated image
@@ -152,15 +158,44 @@ def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern, mode):
 			im = np.array(image)
 			imLabels = np.array(labelImage)
 			imLabels = np.clip(imLabels, 0, 19)
-			
+			'''
 			if imArray.size == 0:
 				imArray = im
 				yLabels = imLabels
 			else:
 				imArray = np.concatenate((imArray, im))
 				yLabels = np.concatenate((yLabels, imLabels))
-			counter += 1
+			'''
 			
+			# 2nd Try 
+			if imArray.size == patchSize*patchSize*c:
+				imArray = np.stack((imArray, im), axis=0)
+				yLabels = np.append(yLabels, imLabels)
+			elif imArray.size == 0:
+				imArray = im
+				yLabels = np.append(yLabels, imLabels)
+			else:
+				imArray = np.insert(imArray, index, im, axis=0)
+				yLabels = np.append(yLabels, imLabels)
+			counter += 1
+			if index == offset-1:
+				np.save(x_Handler, imArray)
+				np.save(y_Handler, yLabels)
+				fileIndex += 1
+				x_Handler.close()
+				y_Handler.close()
+				# Reset the arrays for refill
+				imArray = np.array([])
+				yLabels = np.array([])
+
+				x_Handler = open(outpath+filePattern[0]+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+				y_Handler = open(outpath+filePattern[1]+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+				index = 0
+				print(outpath+filePattern[0])
+				print('{}  Saved...'.format(fileIndex))
+				continue
+			index   += 1
+
 	# Check if the file handlers are closed with the residual samples
 	if not x_Handler.closed and not y_Handler.closed:
 		np.save(x_Handler, imArray)
@@ -169,6 +204,7 @@ def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern, mode):
 		y_Handler.close() 
 		imArray = np.array([])
 		yLabels = np.array([])
+
 	
 def main():
 	print('Train...')
@@ -176,10 +212,10 @@ def main():
 	denseExtractor(trainImageSet, trainImagePath, trainFinePath, outTrainImgPath, filePattern, mode)
 	print('Validation...')
 	filePattern = ['X_validation_set_', 'Y_validation_set_']
-	#denseExtractor(valImageSet, valImagePath, valFinePath, outValImgPath, filePattern, mode)
+	denseExtractor(valImageSet, valImagePath, valFinePath, outValImgPath, filePattern, mode)
 	print('Test...')
 	filePattern = ['X_test_set_', 'Y_test_set_']
-	#denseExtractor(testImageSet, testImagePath, testFinePath, outTestImgPath, filePattern, mode)
+	denseExtractor(testImageSet, testImagePath, testFinePath, outTestImgPath, filePattern, mode)
 
 
 if __name__ == '__main__':

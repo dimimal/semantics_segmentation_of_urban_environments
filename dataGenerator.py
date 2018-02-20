@@ -1,3 +1,4 @@
+from __future__ import print_function, absolute_import, division
 import numpy as np
 import os
 import random
@@ -115,10 +116,12 @@ class DataGenerator(object):
     def getNextBatch(self, fileId, mode):
         if mode == 'Train':
             X_train = np.load(self.trainPath+'/'+fileId).astype('float32')
-            Y_train = np.load(self.trainPath+'/'+self.Y_trainList[self.X_trainList.index(fileId)]).astype('float32')
+            Y_train = np.load(self.trainPath+'/'+self.Y_trainList[self.X_trainList.index(fileId)]).astype('uint8')
             #X_train = np.load(self.trainPath+'/'+'X_train_set_512_0005.npz').astype('float32')
             #Y_train = np.load(self.trainPath+'/'+'Y_train_set_512_0005.npz')
+            #Y_train = np.reshape(Y_train, (X_train.shape[0], -1))
             X_train, Y_train = self.shuffle(X_train, Y_train)
+            #print(X_train.shape, Y_train.shape)
             if self.normalize:
                 X_train = self.standardize(X_train)
             return X_train, Y_train
@@ -126,7 +129,8 @@ class DataGenerator(object):
 
         elif mode == 'Val':
             X_val = np.load(self.valPath+'/'+fileId, mmap_mode='r').astype('float32')
-            Y_val = np.load(self.valPath+'/'+self.Y_valList[self.X_valList.index(fileId)]).astype('float32')
+            Y_val = np.load(self.valPath+'/'+self.Y_valList[self.X_valList.index(fileId)]).astype('uint8')
+            #Y_val = np.reshape(Y_val, (X_val.shape[0], -1))
             
             X_val, Y_val = self.shuffle(X_val, Y_val) # Shuffle data
             if self.normalize:  
@@ -135,7 +139,9 @@ class DataGenerator(object):
 
         elif mode == 'Test':
             X_test = np.load(self.testPath+'/'+fileId, mmap_mode='r').astype('float32')
-            Y_test = np.load(self.testPath+'/'+self.Y_testList[self.X_testList.index(fileId)]).astype('float32')
+            Y_test = np.load(self.testPath+'/'+self.Y_testList[self.X_testList.index(fileId)]).astype('uint8')
+            #Y_test = np.reshape(Y_test, (X_test.shape[0], -1))
+
             if self.normalize:
                 X_test = self.standardize(X_test)
             return X_test, Y_test
@@ -147,30 +153,8 @@ class DataGenerator(object):
             file = self.X_trainList[counter]
             counter = (counter+1) % len(self.X_trainList)           
             x, y = self.getNextBatch(file, mode='Train')
-            x = np.squeeze(x)
-            y = np.squeeze(y)
-            #y = self.oneHotEncode(y)
-            #y = to_categorical(y.flatten(), self.classes).reshape((y.shape,self.img_rows,self.img_cols, self.classes)) 
-            #y = np.reshape(y, (0, self.img_rows, self.img_cols))
+            #y = self.oneHotEncode(y) 
             for cbatch in range(0, x.shape[0], self.batchSize):
-                if x[cbatch:(cbatch+self.batchSize)].shape[0] != y[cbatch:(cbatch+self.batchSize)].shape[0]:
-                    continue
-                '''
-                try:
-                    
-                    if random.random() < self.prob:
-                        x[cbatch], y[cbatch, :] = self.random_transform(x[cbatch], y[cbatch].reshape((self.img_rows,self.img_cols)))                   
-                    
-                    if y[cbatch].size == 0:
-                        continue
-                    #print(y[cbatch:(cbatch+self.batchSize)].shape, cbatch)            
-                    yield (x[cbatch:(cbatch+self.batchSize),:,:,:],#.reshape((self.batchSize,self.img_rows, self.img_cols,self.classes)))#y[cbatch:(cbatch+self.batchSize)]) 
-                    np.expand_dims(to_categorical(y[cbatch:(cbatch+self.batchSize)].flatten(), self.classes)
-                                    .reshape((self.img_rows, self.img_cols,self.classes)), axis=0))
-                except:
-                    #print(x[cbatch].shape, y[cbatch].shape)
-                    continue
-                '''
                 yield (x[cbatch:(cbatch+self.batchSize),:,:,:], self.oneHotEncode(y[cbatch:(cbatch+self.batchSize)]))
                 
     def nextVal(self):
@@ -180,11 +164,7 @@ class DataGenerator(object):
             counter = (counter+1) % len(self.X_valList)     
             x, y = self.getNextBatch(file, mode='Val')
             #y = self.oneHotEncode(y)
-            x = np.squeeze(x)
-            y = np.squeeze(y)
             for cbatch in range(0,x.shape[0], self.batchSize):
-                if x[cbatch:(cbatch+self.batchSize)].shape[0] != y[cbatch:(cbatch+self.batchSize)].shape[0]:
-                    continue
                 yield (x[cbatch:(cbatch+self.batchSize),:,:,:], self.oneHotEncode(y[cbatch:(cbatch+self.batchSize)]))                  
 
     def nextTest(self):
@@ -194,33 +174,28 @@ class DataGenerator(object):
             counter = (counter+1) % len(self.X_testList)    
             x, y = self.getNextBatch(file, mode='Test')
             #y = self.oneHotEncode(y)            
-            x = np.squeeze(x)
-            y = np.squeeze(y)
             for cbatch in range(0, x.shape[0], self.batchSize):
-                if x[cbatch:(cbatch+self.batchSize)].shape[0] != y[cbatch:(cbatch+self.batchSize)].shape[0]:
-                    continue
-                yield (x[cbatch:(cbatch+self.batchSize),:,:,:], self.oneHotEncode(y[cbatch:(cbatch+self.batchSize)]))
+                yield (x[cbatch:(cbatch+self.batchSize),:,:,:],  self.oneHotEncode(y[cbatch:(cbatch+self.batchSize)]))
     
     '''
     Gets as input the dense ylabel matrix and returns the one 
     hot encoding of indexed labels: input-> y[n_sample,n_feats]
     '''
     def oneHotEncode(self, y):
+        #print(type(y))
+        #print(y.shape)
         '''
         new_y = np.empty((y.shape[0],self.img_rows,self.img_cols,self.classes), dtype='uint8')
         for index,value in np.ndenumerate(y):
-            new_y[index[0],index[1]/self.img_rows,index[1]%self.img_cols] = to_categorical(y[index[0],index[1]],\
+            #print(type(index[0]))
+            new_y[index[0],index[1]//self.img_rows,index[1]%self.img_cols] = to_categorical(y[index[0],index[1]],\
                 num_classes=self.classes)
-        return new_y
+        return new_y 
         '''
-        #print(y.shape)
-        rows = y.shape[0]
-        #if rows == 0:
-        #    rows = 1
-        y    = y.flatten()
-        y    = to_categorical(y, self.classes)
-        y    = np.reshape(y, (rows, self.img_rows, self.img_cols, self.classes))
-        return y
+        samples = y.shape[0]
+        y = y.flatten()
+        y = to_categorical(y, num_classes=self.classes)
+        return np.reshape(y, (samples, self.img_rows, self.img_cols, self.classes))
 
     '''
     Shuffle the samples to overcome overfitting with specific classes 
@@ -272,7 +247,7 @@ class DataGenerator(object):
     ''' 
     def computeTestClasses(self):
         for file in self.Y_testList:
-            y = np.load(self.testPath+'/'+file).astype('float32')
+            y = np.load(self.testPath+'/'+file).astype('uint8')
             y = self.oneHotEncode(np.reshape(y, (y.shape[0], self.img_rows*self.img_cols)))
             if self.allTestClasses.size == 0:
                 self.allTestClasses = y

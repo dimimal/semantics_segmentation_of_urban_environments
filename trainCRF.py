@@ -26,7 +26,7 @@ from BillinearUpsampling import BilinearUpSampling2D
 from sklearn.metrics import f1_score, classification_report, confusion_matrix, jaccard_similarity_score
 import keras.backend as K
 import keras
-from modelPredictor import computeMeanIou, plot_confusion_matrix
+#from modelPredictor import computeMeanIou, plot_confusion_matrix
 import itertools
 from labels import listLabels
 import time
@@ -87,7 +87,7 @@ valFolder   = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg
 testFolder  = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_test_set_512/'
 imagePath   = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_train_set_512/X_train_set_512_0001.npz'
 
-epochs               = 5
+epochs               = 20
 patchSize            = 512
 (img_rows, img_cols) = patchSize, patchSize 
 NUM_CLASSES          = 20
@@ -321,7 +321,7 @@ def crfRNN():
     plateauCallback = ReduceLROnPlateau(monitor='val_loss',
                 factor=0.5,
                 patience=5,
-                min_lr=0.00005,
+                min_lr=0.00000000000001,
                 verbose=1,
                 cooldown=3)
 
@@ -343,7 +343,7 @@ def crfRNN():
                          theta_alpha=160.,
                          theta_beta=3.,
                          theta_gamma=3.,
-                         num_iterations=3,
+                         num_iterations=5,
                          name='crfrnn')([input_1, input_2])
     #
     model       = Model(inputs=model.input, outputs=model.output, name='CNN')
@@ -362,7 +362,7 @@ def crfRNN():
     #sys.exit(1)
     # evaluate loaded model on test data
     full_model.compile( loss=weighted_loss(NUM_CLASSES, coefficients),
-                        optimizer=keras.optimizers.SGD(lr=0.0000001, momentum=0.9) ,
+                        optimizer=keras.optimizers.SGD(lr=0.0000000001, momentum=0.9) ,
                         metrics=['accuracy'] )
     #data_gen.computeTestClasses()
     # load weights into new model
@@ -417,26 +417,26 @@ def plot_results(y_true, y_pred):
     meanIoU = jaccard_similarity_score(y_true, y_pred, normalize=True)  
 
     # Compute mean IoU
-    cfMatrix = confusion_matrix(y_true, y_pred)
-    pixelAcc, meanIoUfromcf = computeMeanIou(cfMatrix)
+    #cfMatrix = confusion_matrix(y_true, y_pred)
+    #pixelAcc, meanIoUfromcf = computeMeanIou(cfMatrix)
 
     # Write report to txt
     with open(reportPath,'w') as fileObj:
         fileObj.write(report)
         fileObj.write(str(meanIoU))
-        fileObj.write(str(meanIoUfromcf))
+        #fileObj.write(str(meanIoUfromcf))
     
     print('----- Mean IoU ----- ')
     print('------ %s -----------'%(str(meanIoU)))
-    print('---- Manual mean Iou from CF ------')
-    print('------ %s -----------'%(str(meanIoUfromcf)))
-    print('Pixel Accuracy::: {}'.format(pixelAcc))
+    #print('---- Manual mean Iou from CF ------')
+    #print('------ %s -----------'%(str(meanIoUfromcf)))
+    #print('Pixel Accuracy::: {}'.format(pixelAcc))
 
-    cfMatrix = np.delete(cfMatrix, cfMatrix.shape[0]-1, axis=0)
-    cfMatrix = np.delete(cfMatrix, cfMatrix.shape[0]-1, axis=1)
-    plt.figure()
-    plot_confusion_matrix(cfMatrix, listLabels)
-    plt.show()
+    #cfMatrix = np.delete(cfMatrix, cfMatrix.shape[0]-1, axis=0)
+    #cfMatrix = np.delete(cfMatrix, cfMatrix.shape[0]-1, axis=1)
+    #plt.figure()
+    #plot_confusion_matrix(cfMatrix, listLabels)
+    #plt.show()
 
 def main():
     #kerasCRF()

@@ -36,7 +36,7 @@ testFolder      = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/lef
 # ============================ Declare the paths for the parameters of our network ====================================================
 weightsPath         = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/Weights_dense_{}_{}.h5'.format(modelIndex, patchSize)
 checkpointPath      = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/checkpoint_Weights_dense_{}_{}.h5'.format(modelIndex, patchSize)
-checkpointPath_2    = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/checkpoint_Weights_dense_data_aug_{}_{}.h5'.format(modelIndex, patchSize)
+#checkpointPath_2    = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/checkpoint_Weights_dense_data_aug_{}_{}.h5'.format(modelIndex, patchSize)
 lrCurvesPath        = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/dense_lrCurves_{}_{}.csv'.format(modelIndex, patchSize)
 modelParamPath      = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/model_params_{}_{}.json'.format(modelIndex, patchSize)
 modelPicturePath    = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/model_dense_{}_{}.png'.format(modelIndex, patchSize)
@@ -44,7 +44,7 @@ reportPath          = '/home/dimitris/GitProjects/semantics_segmentation_of_urba
 
 #np.random.seed(25)
 
-batch_size  = 2
+batch_size  = 4
 num_classes = 20   
 epochs      = 20
 img_rows, img_cols = patchSize, patchSize
@@ -299,7 +299,7 @@ def main():
     csv_logger = CSVLogger(lrCurvesPath, append=True, separator=',')
 
     # Checkpoint to save the weights with the best validation accuracy.
-    checkPoint = ModelCheckpoint(checkpointPath_2,
+    checkPoint = ModelCheckpoint(checkpointPath,
                 monitor='val_loss',
                 verbose=1,
                 save_best_only=True,
@@ -345,7 +345,7 @@ def main():
             model = fcn_512(patchSize, channels)
             model.summary()
             model.compile(loss=weighted_loss(num_classes, coefficients),
-                      optimizer=keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
+                      optimizer=keras.optimizers.Adam(lr=0.000001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
                       metrics=['accuracy'])
 
     # ================================== Start Training ====================================== #
