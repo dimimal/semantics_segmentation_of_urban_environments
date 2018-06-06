@@ -321,7 +321,7 @@ def crfRNN():
     plateauCallback = ReduceLROnPlateau(monitor='val_loss',
                 factor=0.5,
                 patience=5,
-                min_lr=0.00000000000001,
+                min_lr=10e-17,
                 verbose=1,
                 cooldown=3)
 
@@ -362,7 +362,7 @@ def crfRNN():
     #sys.exit(1)
     # evaluate loaded model on test data
     full_model.compile( loss=weighted_loss(NUM_CLASSES, coefficients),
-                        optimizer=keras.optimizers.SGD(lr=0.0000000001, momentum=0.9) ,
+                        optimizer=keras.optimizers.SGD(lr=10e-13, momentum=0.9) ,
                         metrics=['accuracy'] )
     #data_gen.computeTestClasses()
     # load weights into new model

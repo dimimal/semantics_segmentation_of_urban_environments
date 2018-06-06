@@ -49,8 +49,6 @@ def weighted_loss(num_classes, coefficients, head=None):
 
             logits = logits + epsilon
             # consturct one-hot label array
-            #label_flat = tf.to_int32( tf.reshape(labels, (-1, 1)))
-            #labels = tf.reshape(tf.one_hot(label_flat, depth=num_classes), (-1, num_classes))
             labels = tf.to_float(tf.reshape(labels, (-1, num_classes)))
             softmax = tf.nn.softmax(logits)
             
