@@ -9,14 +9,17 @@ import keras
 import matplotlib.pyplot as plt
 import random
 from keras.utils import plot_model
+
 from keras.models import Model, Sequential, model_from_json
 from keras.layers import Input, Dense, Dropout, Flatten, AlphaDropout, Activation, Reshape, ZeroPadding2D
 from keras.layers import Conv2D, MaxPooling2D, Conv2DTranspose, UpSampling2D, Lambda, core, Add, Concatenate
+
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l1,l2
 from keras.constraints import MaxNorm
 from keras import backend as K
 from keras.activations import softmax
+
 from weighted_categorical_crossentropy import weighted_categorical_crossentropy, weighted_loss
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, CSVLogger
 from dataGenerator import DataGenerator
@@ -95,6 +98,7 @@ coefficients = {0:1.,
                 19:0.}
 
 coefficients = [key for index,key in coefficients.iteritems()]
+
 weights = [key for index,key in class_weights.iteritems()]
 
 start_time = time.time()
@@ -122,6 +126,7 @@ def computeMeanIou(matrix):
 def fcn_512(patchSize, channels):
     input_shape = (patchSize, patchSize, channels)        
     inputs = Input(shape=input_shape)
+
     #
     x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_1')(inputs)
     x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_2')(x)
@@ -138,6 +143,7 @@ def fcn_512(patchSize, channels):
     x = Conv2D(256, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal', name='Conv_7')(x)
     x = Conv2D(256, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal', name='Conv_8')(x)
     x = MaxPooling2D(pool_size=(2, 2), name='Pool_4')(x)
+
     #
     atrous_1 = Conv2D(256, (3,3), dilation_rate=(3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_1_1')(x)
     atrous_1 = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_1_2')(atrous_1)
@@ -181,8 +187,6 @@ def fcn_512(patchSize, channels):
     #    x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
     predictions = Conv2DTranspose(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal', name='Deconv_9')(x)
     
-    #predictions = core.Activation('softmax')(predictions)
-
     model = Model(inputs=inputs, outputs=predictions)
 
     
@@ -221,6 +225,7 @@ def plot_results(history, y_true, y_pred, score, cfMatrix=False):
     plt.show()
     report = classification_report(y_true, y_pred)
     print(report)
+
     meanIoU = jaccard_similarity_score(y_true, y_pred)  
 
     # Compute mean IoU
@@ -246,6 +251,46 @@ def plot_results(history, y_true, y_pred, score, cfMatrix=False):
         fileObj.write(report)
         fileObj.write(str(meanIoU))
         #fileObj.write(str(meanIoUfromcf))
+
+def plot_confusion_matrix(cm, 
+                          classes,
+                          normalize=True,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+
+
+    # Write report to txt
+    with open(reportPath,'w') as fileObj:
+        fileObj.write(report)
+        fileObj.write(str(meanIoU))
+        fileObj.write(str(meanIoUfromcf))
 
 def plot_confusion_matrix(cm, 
                           classes,
@@ -360,6 +405,7 @@ def main():
                                       callbacks=[earlyStopping, plateauCallback, checkPoint, csv_logger])
     
         print("--- %s seconds ---" % (time.time() - start_time))
+        save_model_params(model)
         y_pred = model.predict_generator(data_gen.nextTest(), steps=1, verbose=1)
         score = model.evaluate_generator(data_gen.nextTest(), steps=1)
     else:
@@ -374,10 +420,12 @@ def main():
         data_gen.computeTestClasses()
         print("--- %s seconds ---" % (time.time() - start_time))
         save_model_params(model)
+
         y_pred  = model.predict_generator(data_gen.nextTest(), data_gen.getSize(mode='Test')//batch_size, verbose=1)
         score   = model.evaluate_generator(data_gen.nextTest(), data_gen.getSize(mode='Test')//batch_size)
     save_model_params(model)
     print('Model Saved')
+
     y_true = data_gen.getClasses(y_pred.shape[0])
     plot_results(history, y_true, y_pred, score)
 
