@@ -201,35 +201,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         loadAction.triggered.connect( self.getImageFromUser)
         self.toolbar.addAction(loadAction)
 
-        '''
-        # Open previous image
-        backAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'back.png')), '&Tools', self)
-        backAction.setShortcut('left')
-        backAction.setStatusTip('Previous image')
-        backAction.triggered.connect( self.prevImage )
-        self.toolbar.addAction(backAction)
-        self.actImageNotFirst.append(backAction)
-        # Open next image
-        nextAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'next.png')), '&Tools', self)
-        nextAction.setShortcut('right')
-        self.setTip( nextAction, 'Next image' )
-        nextAction.triggered.connect( self.nextImage )
-        self.toolbar.addAction(nextAction)
-        self.actImageNotLast.append(nextAction)
-        '''
 
-        # Play
-        '''
-        playAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'play.png')), '&Tools', self)
-        playAction.setShortcut(' ')
-        playAction.setCheckable(True)
-        playAction.setChecked(False)
-        self.setTip( playAction, 'Play all images' )
-        playAction.triggered.connect( self.playImages )
-        self.toolbar.addAction(playAction)
-        self.actImageNotLast.append(playAction)
-        self.playAction = playAction
-        '''
         # Select image
         selImageAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'shuffle.png' )), '&Tools', self)
         selImageAction.setShortcut('i')
@@ -237,18 +209,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         selImageAction.triggered.connect( self.selectImage )
         self.toolbar.addAction(selImageAction)
         self.actImage.append(selImageAction)
-        '''
-        # Enable/disable disparity visu. Toggle button
-        if self.enableDisparity:
-            dispAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'disp.png' )), '&Tools', self)
-            dispAction.setShortcuts(['d'])
-            dispAction.setCheckable(True)
-            dispAction.setChecked(self.showDisparity)
-            self.setTip( dispAction, 'Enable/disable depth visualization' )
-            dispAction.toggled.connect( self.dispToggle )
-            self.toolbar.addAction(dispAction)
-            self.actImage.append(dispAction)
-        '''
+        
         # Enable/disable zoom. Toggle button
         zoomAction = QtGui.QAction(QtGui.QIcon( os.path.join( iconDir , 'zoom.png' )), '&Tools', self)
         zoomAction.setShortcuts(['z'])
@@ -334,35 +295,7 @@ class CityscapesViewer(QtGui.QMainWindow):
             self.statusBar().showMessage(message)
         return
 
-    # Switch to next image in file list
-    # Load the image
-    # Load its labels
-    # Update the mouse selection
-    # View
-    '''
-    def nextImage(self):
-        if not self.images:
-            return
-        if self.idx < len(self.images)-1:
-            self.idx += 1
-            self.imageChanged()
-        elif self.playState:
-            self.playState = False
-            self.playAction.setChecked(False)
-        else:
-            message = "Already at the last image"
-            self.statusBar().showMessage(message)
-        if self.playState:
-            QtCore.QTimer.singleShot(0, self.nextImage)
-        return
-
-    # Play images, i.e. auto-switch to next image
-    def playImages(self, status):
-        self.playState = status
-        if self.playState:
-            QtCore.QTimer.singleShot(0, self.nextImage)
-
-    '''
+   
     # Switch to a selected image of the file list
     # Ask the user for an image
     # Load the image
@@ -457,8 +390,6 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.loadImage()
         # Load its labels if available
         #self.loadLabels()
-        # Load disparities if available
-        #self.loadDisparities()
         # Update the object the mouse points to
         self.updateMouseObject()
         # Update the GUI
@@ -482,27 +413,6 @@ class CityscapesViewer(QtGui.QMainWindow):
     '''
     # Instead of loadCity method loadImages introduced to load images directly
     def loadImages(self):
-        #self.images      = []
-        #if os.path.isdir(self.imagePath):
-        #self.images      = image
-        #self.images.sort()
-        #self.annotations = predictions
-        #self.idx  = self.images.index()
-        ''' 
-        if self.currentFile in self.images:
-            self.idx = self.images.index(self.currentFile)
-        else:
-            self.idx = 0
-        self.annotations = glob.glob('*' + self.gtExt)
-        self.image
-        '''
-        #print('line 499', type(self.images))
-        #test = '/home/dimitris/GitProjects/semantics_segmentation_of_urban_environments/modelViewer/aachen_000000_000019_leftImg8bit.png'
-        '''
-        print(str(self.images))
-        if os.path.exists(str(self.images)):
-            print('welcome')
-        '''
         self.image  = QtGui.QImage(self.images)
         self.idx    = 0
 
@@ -575,6 +485,8 @@ class CityscapesViewer(QtGui.QMainWindow):
 
     # Load the model from file to get predictions
     def loadModel(self):
+        """TODO: Load keras model to 
+        """
         pass
 
     # Check the dimensions of the labels to match with the image
@@ -842,50 +754,6 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Restore the saved setting from the stack
         qp.restore()
 
-        # The color of the outlines
-        #qp2.setPen(QtGui.QColor('white'))
-        '''
-        # Draw all objects
-        for obj in self.annotation.objects:
-
-            # The label of the object
-            name      = assureSingleInstanceName( obj.label )
-            # If we do not know a color for this label, warn the user
-            if name not in name2label:
-                print("The annotations contain unkown labels. This should not happen. Please inform the datasets authors. Thank you!")
-                print("Details: label '{}', file '{}'".format(name,self.currentLabelFile))
-                continue
-
-            #poly = self.getPolygon(obj)
-
-            # Scale the polygon properly
-            #polyToDraw = poly * QtGui.QTransform.fromScale(self.scale,self.scale)
-
-            # Default drawing
-            # Color from color table, solid brush
-            col   = QtGui.QColor( *name2label[name].color     )
-            brush = QtGui.QBrush( col, QtCore.Qt.SolidPattern )
-            qp2.setBrush(brush)
-            # Overwrite drawing if this is the highlighted object
-            if self.highlightObj and obj == self.highlightObj:
-                # First clear everything below of the polygon
-                qp2.setCompositionMode( QtGui.QPainter.CompositionMode_Clear )
-                #qp2.drawPolygon( polyToDraw )
-                qp2.setCompositionMode( QtGui.QPainter.CompositionMode_SourceOver )
-                # Set the drawing to a special pattern
-                brush = QtGui.QBrush(col,QtCore.Qt.DiagCrossPattern)
-                qp2.setBrush(brush)
-
-            qp2.drawPolygon( polyToDraw )
-        # Draw outline of selected object dotted
-        if self.highlightObj:
-            brush = QtGui.QBrush(QtCore.Qt.NoBrush)
-            qp2.setBrush(brush)
-            qp2.setPen(QtCore.Qt.DashLine)
-            polyToDraw = self.getPolygon(self.highlightObj) * QtGui.QTransform.fromScale(self.scale,self.scale)
-            qp2.drawPolygon( polyToDraw )
-
-        '''
         # End the drawing of the overlay
         qp2.end()
         # Save QPainter settings to stack
@@ -919,6 +787,7 @@ class CityscapesViewer(QtGui.QMainWindow):
                 elif im.shape[2] == 4:
                     qim = QtGui.QImage(im.data, im.shape[1], im.shape[0], im.strides[0], QtGui.QImage.Format_ARGB32)
                     return qim.copy() if copy else qim
+        raise Exception
         # Add failure message here!!
 
     # Draw the label name next to the mouse
