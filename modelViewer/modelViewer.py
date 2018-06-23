@@ -39,7 +39,6 @@ except:
 #################
 
 # Import relative modules
-from helpers.annotation import Annotation
 from helpers.labels import name2label, assureSingleInstanceName, trainId2color, trainId2label
 
 
@@ -65,14 +64,6 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.currentFile       = ""
         # The filename of the labels we currently working on
         self.currentLabelFile  = ""
-        # The path of the images of the currently loaded city
-        #self.city              = ""
-        # The name of the currently loaded city
-        #self.cityName          = ""
-        # The path of the labels. In this folder we expect a folder for each city
-        # Within these city folders we expect the label with a filename matching
-        # the images, except for the extension
-        #self.labelPath         = ""
         # The transparency of the labels over the image
         self.transp            = 0.5
         # The zoom toggle
@@ -146,8 +137,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.dispOverlay       = None
         # The disparity search path
         self.dispPath          = None
-        # Disparity extension
-        self.dispExt           = "_disparity.png"
+        
         # Generate colormap
         try:
             norm = matplotlib.colors.Normalize(vmin=3,vmax=100)
@@ -264,15 +254,14 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.setMouseTracking(True)
         self.toolbar.setMouseTracking(True)
         # Open in full screen
-        self.showFullScreen( )
+        self.showFullScreen()
         # Set a title
-        self.applicationTitle = 'Cityscapes Viewer v1.0'
+        self.applicationTitle = 'Cityscapes Prediction Viewer '
         self.setWindowTitle(self.applicationTitle)
         self.displayHelpMessage()
         self.selectMode()
         self.getImageFromUser()
-        #self.getCityFromUser()
-        # And show the application
+
         self.show()
 
     #############################
@@ -348,22 +337,17 @@ class CityscapesViewer(QtGui.QMainWindow):
 
         message = self.applicationTitle + "\n\n"
         message += "INSTRUCTIONS\n"
-        message += " - select a city from drop-down menu\n"
+        message += " - select an image along with the predictions\n"
         message += " - browse images and labels using\n"
         message += "   the toolbar buttons or the controls below\n"
         message += "\n"
         message += "CONTROLS\n"
-        message += " - select city [o]\n"
         message += " - highlight objects [move mouse]\n"
-        message += " - next image [left arrow]\n"
-        message += " - previous image [right arrow]\n"
-        message += " - toggle autoplay [space]\n"
         message += " - increase/decrease label transparency\n"
         message += "   [ctrl+mousewheel] or [+ / -]\n"
         message += " - open zoom window [z]\n"
         message += "       zoom in/out [mousewheel]\n"
         message += "       enlarge/shrink zoom window [shift+mousewheel]\n"
-        message += " - select a specific image [i]\n"
         message += " - show path to image below [f]\n"
         message += " - exit viewer [esc]\n"
 
@@ -395,24 +379,9 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Update the GUI
         self.update()
 
-    #############################
-    ## File I/O
-    #############################
-    '''
-    # Load the currently selected city if possible
-    def loadCity(self):
-        # Search for all *.pngs to get the image list
-        self.images = []
-        if os.path.isdir(self.city):
-            self.images = glob.glob( os.path.join( self.city , '*' + self.imageExt ) )
-            self.images.sort()
-            if self.currentFile in self.images:
-                self.idx = self.images.index(self.currentFile)
-            else:
-                self.idx = 0
-    '''
-    # Instead of loadCity method loadImages introduced to load images directly
     def loadImages(self):
+        """Load the images
+        """
         self.image  = QtGui.QImage(self.images)
         self.idx    = 0
 
@@ -428,9 +397,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         success = False
         message = self.defaultStatusbar
         if self.images:
-            #filename = self.images[self.idx]
-            #filename = os.path.normpath( filename )
-            if not self.image.isNull():# and filename == self.currentFile:
+            if not self.image.isNull():
                 success = True
             else:
                 self.image = QtGui.QImage(self.images)
@@ -485,21 +452,22 @@ class CityscapesViewer(QtGui.QMainWindow):
 
     # Load the model from file to get predictions
     def loadModel(self):
-        """TODO: Load keras model to 
+        """TODO: Load keras model
         """
         pass
 
     # Check the dimensions of the labels to match with the image
     def checkDims(self):
         if self.annotations.ndim == 1:
-            self.annotations = np.reshape(self.annotations, (512,512))
+            if self.annotations == 1024*2048:
+                self.annotations = np.reshape(self.annotations, (1024,2048))
+            elif self.annotations == 512*512:
+                self.annotations = np.reshape(self.annotations, (512,512))
+                self.annotations = cv.resize(self.annotations, (2048, 1024), interpolation=cv.INTER_NEAREST)
         
-        # Find the scale factors of the image
-        fx               = 1024 / self.annotations.shape[0]
-        fy               = 2048 / self.annotations.shape[1]
-        shape = self.annotations.shape
-
-        self.annotations = cv.resize(self.annotations, (fx*shape[1], fy*shape[0]), interpolation=cv.INTER_NEAREST)
+        elif self.annotations.ndim == 2:
+            if self.annotations.shape != (1024,2048):            
+                self.annotations = cv.resize(self.annotations, (2048, 1024), interpolation=cv.INTER_NEAREST) 
     
     # Transform trainId labels to colors
     def labels2Color(self):
@@ -510,8 +478,6 @@ class CityscapesViewer(QtGui.QMainWindow):
             
     # The new loadLabels Function
     def loadLabels(self):
-        #print(self.annotations)
-
         self.annotations = np.loadtxt(str(self.annotations))
         self.annotations = np.asarray(self.annotations, dtype='uint8')
         self.checkDims()
@@ -561,63 +527,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         # Restore the message
         self.statusBar().showMessage( restoreMessage )
         '''
-    
-    '''
-    # Load the disparity map from file
-    # Only loads if they exist
-    def loadDisparities(self):
-        if not self.enableDisparity:
-            return
-        if not self.showDisparity:
-            return
-        
-        filename = self.getDisparityFilename()
-        if not filename:
-            self.dispImg = None
-            return
-        
-        # If we have everything and the filename did not change, then we are good
-        if self.dispImg and filename == self.currentDispFile:
-            return
 
-        # Clear the current labels first
-        self.dispImg = None
-
-        try:
-            self.dispImg = Image.open(filename)
-        except IOError as e:
-            # This is the error if the file does not exist
-            message = "Error parsing disparities in {0}. Message: {1}".format( filename, e.strerror )
-            self.statusBar().showMessage(message)
-            self.dispImg = None
-
-        if self.dispImg:
-            dispNp = np.array( self.dispImg )
-            dispNp /= 128
-            dispNp.round()
-            dispNp = np.array( dispNp , dtype=np.uint8 )
-
-            dispQt = QtGui.QImage( dispNp.data , dispNp.shape[1] , dispNp.shape[0] , QtGui.QImage.Format_Indexed8 )
-
-            colortable = []
-            for i in range(256):
-                color = self.colormap.to_rgba(i)
-                colorRgb = ( int(color[0]*255) , int(color[1]*255) , int(color[2]*255) )
-                colortable.append( QtGui.qRgb( *colorRgb ) )
-
-            dispQt.setColorTable( colortable )
-            dispQt = dispQt.convertToFormat( QtGui.QImage.Format_ARGB32_Premultiplied )
-            self.dispOverlay = dispQt
-
-        # Remember the filename loaded
-        self.currentDispFile = filename
-
-        # Remember the status bar message to restore it later
-        restoreMessage = self.statusBar().currentMessage()
-
-        # Restore the message
-        self.statusBar().showMessage( restoreMessage )
-    '''
     #############################
     ## Drawing
     #############################
@@ -637,12 +547,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         #self.getHighlightedObject(qp)
         # Draw the image first
         self.drawImage(qp)
-        '''
-        if self.enableDisparity and self.showDisparity:
-            # Draw the disparities on top
-            overlay = self.drawDisp(qp)
-        else:
-        '''
+        
         # Draw the labels on top
         overlay = self.drawLabels(qp)
         # Draw the label name next to the mouse
@@ -787,18 +692,17 @@ class CityscapesViewer(QtGui.QMainWindow):
                 elif im.shape[2] == 4:
                     qim = QtGui.QImage(im.data, im.shape[1], im.shape[0], im.strides[0], QtGui.QImage.Format_ARGB32)
                     return qim.copy() if copy else qim
-        raise Exception
-        # Add failure message here!!
+        
+        # Show Error message
+        message = 'Inconsistent data type {}'.format(im.dtype)
+        self.messageBox(message)
+        # Update status bar
+        self.statusBar().showMessage( self.defaultStatusbar )
 
+        
     # Draw the label name next to the mouse
     def drawLabelAtMouse(self, qp):
-        # Nothing to do without a highlighted object
-        '''
-        if not self.highlightObj:
-            return
-        if not self.annotations.all():
-            return
-        '''
+        
         # Nothing to without a mouse position
         if not self.mousePosOrig:
             return
@@ -891,24 +795,7 @@ class CityscapesViewer(QtGui.QMainWindow):
         qp.drawImage(view,overlay_scaled,sel) # Label Image
         qp.restore()
 
-    '''
-    # Draw disparities
-    def drawDisp( self , qp ):
-        if not self.dispOverlay:
-            return 
-
-        # Save QPainter settings to stack
-        qp.save()
-        # Define transparency
-        qp.setOpacity(self.transp)
-        # Draw the overlay image
-        qp.drawImage(QtCore.QRect( self.xoff, self.yoff, self.w, self.h ),self.dispOverlay)
-        # Restore settings
-        qp.restore()
-
-        return self.dispOverlay
-    '''
-
+    
     #############################
     ## Mouse/keyboard events
     #############################
@@ -1013,16 +900,25 @@ class CityscapesViewer(QtGui.QMainWindow):
         self.statusBar().showMessage(message)
         fileDialog  = QtGui.QFileDialog.getOpenFileName(self, 'Select Image for prediction', 
                                                         dir_path, 'Image files (*.jpg *.png *.gif)')
-        # Put some error message here
-        # fix dat shit!
+        # Check if sth relevant selected
         if rawImagePatttern[0] not in fileDialog:
-            self.getFile()
+            message = 'Select an image'
+            self.messageBox(message)
+            return None, None
         else:
             filePred = QtGui.QFileDialog.getOpenFileName(self, 'Load the prediction File', 
                                                         dir_path, 'Text Files or Image Files (*.txt)')
         
-        return fileDialog, filePred
+            return fileDialog, filePred
     
+    # Display message inside a box
+    def messageBox(self, message):
+        msg = QtGui.QMessageBox()
+        msg.setIcon(QtGui.QMessageBox.Information)
+        msg.setText(message)
+        msg.setStandardButtons(QtGui.QMessageBox.Ok)
+        msg.exec_()
+
     # Replace getCityFromUser and load only one image
     def getImageFromUser(self):
         restoreMessage   = self.statusBar().currentMessage()
@@ -1031,178 +927,10 @@ class CityscapesViewer(QtGui.QMainWindow):
         rawImagePatttern = [ "leftImg8bit" ]
 
         self.images, self.annotations  = self.getFile()
-        
-        self.loadImages()
-        self.imageChanged()
-        '''
-        dlgTitle = "Select new Image for Predictions"
-        message  = dlgTitle
-        question = dlgTitle
-        message  = "Select image for viewing"
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        self.statusBar().showMessage(message)
-        #for file in os.listdir(dir_path)
-        #print(dir_path)
-        items = [file for file in os.listdir(dir_path) if annotations[0] in file or rawImagePatttern[0] in file]
-        if items:
 
-            (item, ok) = QtGui.QInputDialog.getItem(self, dlgTitle, question, items, 0, False)       
-            # Restore message
-            self.statusBar().showMessage(restoreMessage)
-
-            if ok and item:
-                
-                # Check if test folder in order to load image only!! Test has no labels
-                (split,gt,city) = [ str(i) for i in item.split(', ') ]
-                if split == 'test' and not self.showDisparity:
-                    self.transp = 0.1
-                else:
-                    self.transp = 0.5
-                
-                #print(str(items))
-                self.transp = 0.5
-                #print(os.path.normpath(dir_path))
-                self.imagePath  = dir_path#+'/'+item 
-                #pattern = re.findall('\w+_\d+_\d+_', str(item))[0] 
-                self.labelPath  = dir_path# + '/' + pattern + annotations[0] + '_labelTrainIds.png'
-                # If files not in place show proper message
-                if not os.path.exists(self.imagePath) or not os.path.exists(self.labelPath):
-                    message  = QtGui.QMessageBox()
-                    message.setIcon(QtGui.QMessageBox.Warning)
-                    message.setText('Path or file does not exist')
-                    message.setInformativeText("Check if your files are in proper place or format")
-                    message.setWindowTitle('Warning Message')
-                    message.setStandardButtons(QtGui.QMessageBox.Ok)
-                    sys.exit(message.exec_())
-                # transform loadCity method to load image callback (loadImages())
-                self.loadImages()
-                self.imageChanged()
-        else:
- 
-            warning = ""
-            warning += "The data was not found. Please:\n\n"
-            warning += " - make sure the folder is in the Cityscapes root folder\n"
-
-            # Display wrong message
-            reply = QtGui.QMessageBox.information(self, "ERROR!", warning, QtGui.QMessageBox.Ok)
-            if reply == QtGui.QMessageBox.Ok:
-                sys.exit()
-
-        return                
-    '''
-    '''
-    def getCityFromUser(self):
-        # Reset the status bar to this message when leaving
-        restoreMessage = self.statusBar().currentMessage()
-
-        if 'CITYSCAPES_DATASET' in os.environ:
-            csPath = os.environ['CITYSCAPES_DATASET']
-        else:
-            csPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','..')
-
-        availableCities = []
-        annotations = [ "gtFine" , "gtCoarse" ]
-        splits      = [ "train_extra" , "train"  , "val" , "test" ]
-        for gt in annotations:
-            for split in splits:
-                cities = glob.glob(os.path.join(csPath, gt, split, '*'))
-                cities.sort()
-                availableCities.extend( [ (split,gt,os.path.basename(c)) for c in cities if os.listdir(c) ] )
-
-        # List of possible labels
-        items = [split + ", " + gt + ", " + city for (split,gt,city) in availableCities]
-
-        # Specify title
-        dlgTitle = "Select new city"
-        message  = dlgTitle
-        question = dlgTitle
-        message  = "Select city for viewing"
-        question = "Which city would you like to view?"
-        self.statusBar().showMessage(message)
-
-        if items:
-
-		    # Create and wait for dialog
-		    (item, ok) = QtGui.QInputDialog.getItem(self, dlgTitle, question, items, 0, False)
-
-		    # Restore message
-		    self.statusBar().showMessage( restoreMessage )
-
-		    if ok and item:
-		        (split,gt,city) = [ str(i) for i in item.split(', ') ]
-		        if split == 'test' and not self.showDisparity:
-		            self.transp = 0.1
-		        else:
-		            self.transp = 0.5
-		        self.city      = os.path.normpath( os.path.join( csPath, "leftImg8bit" , split , city ) )
-		        self.labelPath = os.path.normpath( os.path.join( csPath, gt            , split , city ) )
-		        self.dispPath  = os.path.normpath( os.path.join( csPath, "disparity"   , split , city ) )
-		        self.loadCity()
-		        self.imageChanged()
-
-        else:
- 
-            warning = ""
-            warning += "The data was not found. Please:\n\n"
-            warning += " - make sure the scripts folder is in the Cityscapes root folder\n"
-            warning += "or\n"
-            warning += " - set CITYSCAPES_DATASET to the Cityscapes root folder\n"
-            warning += "       e.g. 'export CITYSCAPES_DATASET=<root_path>'\n"
-
-            reply = QtGui.QMessageBox.information(self, "ERROR!", warning, QtGui.QMessageBox.Ok)
-            if reply == QtGui.QMessageBox.Ok:
-                sys.exit()
-
-        return
-    '''
-    '''
-    # Determine if the given candidate for a label path makes sense
-    def isLabelPathValid(self,labelPath):
-        return os.path.isdir(labelPath)
-
-    # Get the filename where to load labels
-    # Returns empty string if not possible
-    def getLabelFilename( self ):
-        # And we need to have a directory where labels should be searched
-        if not self.labelPath:
-            return ""
-        # Without the name of the current images, there is also nothing we can do
-        if not self.currentFile:
-            return ""
-        # Check if the label directory is valid.
-        if not self.isLabelPathValid(self.labelPath):
-            return ""
-
-        # Generate the filename of the label file
-        filename = os.path.basename( self.currentFile )
-        filename = filename.replace( self.imageExt , self.gtExt )
-        filename = os.path.join( self.labelPath , filename )
-        search   = glob.glob( filename )
-        if not search:
-            return ""
-        filename = os.path.normpath(search[0])
-        return filename
-
-    # Get the filename where to load disparities
-    # Returns empty string if not possible
-    def getDisparityFilename( self ):
-        # And we need to have a directory where disparities should be searched
-        if not self.dispPath:
-            return ""
-        # Without the name of the current images, there is also nothing we can do
-        if not self.currentFile:
-            return ""
-        # Check if the label directory is valid.
-        if not os.path.isdir(self.dispPath):
-            return ""
-
-        # Generate the filename of the label file
-        filename = os.path.basename( self.currentFile )
-        #filename = filename.replace( self.imageExt , self.dispExt )
-        #filename = os.path.join( self.dispPath , filename )
-        filename = os.path.normpath(filename)
-        return filename
-    '''
+        if self.images and self.annotations:
+            self.loadImages()
+            self.imageChanged()      
 
     # Disable the popup menu on right click
     def createPopupMenu(self):

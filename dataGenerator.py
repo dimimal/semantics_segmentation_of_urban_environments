@@ -110,37 +110,31 @@ class DataGenerator(object):
         or width_shift_range or height_shift_range:
             self.dataAugMode = True
             
-    '''
-    Returns a batch of samples requested from the generator
-    '''
     def getNextBatch(self, fileId, mode):
+        '''Returns a batch of samples requested from the generator
+        '''
         if mode == 'Train':
-            X_train = np.load(self.trainPath+'/'+fileId).astype('float32')
-            Y_train = np.load(self.trainPath+'/'+self.Y_trainList[self.X_trainList.index(fileId)]).astype('uint8')
-            #X_train = np.load(self.trainPath+'/'+'X_train_set_512_0005.npz').astype('float32')
-            #Y_train = np.load(self.trainPath+'/'+'Y_train_set_512_0005.npz')
-            #Y_train = np.reshape(Y_train, (X_train.shape[0], -1))
+            X_train = np.load(os.path.join(self.trainPath, fileId)).astype('float32')
+            Y_train = np.load(os.path.join(self.trainPath, self.Y_trainList[self.X_trainList.index(fileId)])).astype('uint8')
             X_train, Y_train = self.shuffle(X_train, Y_train)
-            #print(X_train.shape, Y_train.shape)
+            # Normalize values
             if self.normalize:
                 X_train = self.standardize(X_train)
             return X_train, Y_train
 
 
         elif mode == 'Val':
-            X_val = np.load(self.valPath+'/'+fileId, mmap_mode='r').astype('float32')
-            Y_val = np.load(self.valPath+'/'+self.Y_valList[self.X_valList.index(fileId)]).astype('uint8')
-            #Y_val = np.reshape(Y_val, (X_val.shape[0], -1))
-            
+            X_val = np.load(os.path.join(self.valPath, fileId), mmap_mode='r').astype('float32')
+            Y_val = np.load(os.paht.join(self.valPath, self.Y_valList[self.X_valList.index(fileId)])).astype('uint8')
             X_val, Y_val = self.shuffle(X_val, Y_val) # Shuffle data
+
             if self.normalize:  
                 X_val = self.standardize(X_val)
             return X_val, Y_val
 
         elif mode == 'Test':
-            X_test = np.load(self.testPath+'/'+fileId, mmap_mode='r').astype('float32')
-            Y_test = np.load(self.testPath+'/'+self.Y_testList[self.X_testList.index(fileId)]).astype('uint8')
-            #Y_test = np.reshape(Y_test, (X_test.shape[0], -1))
+            X_test = np.load(os.path.join(self.testPath, fileId), mmap_mode='r').astype('float32')
+            Y_test = np.load(os.path.join(self.testPath, self.Y_testList[self.X_testList.index(fileId)])).astype('uint8')
 
             if self.normalize:
                 X_test = self.standardize(X_test)
@@ -153,7 +147,6 @@ class DataGenerator(object):
             file = self.X_trainList[counter]
             counter = (counter+1) % len(self.X_trainList)           
             x, y = self.getNextBatch(file, mode='Train')
-            #y = self.oneHotEncode(y) 
             for cbatch in range(0, x.shape[0], self.batchSize):
                 yield (x[cbatch:(cbatch+self.batchSize),:,:,:], self.oneHotEncode(y[cbatch:(cbatch+self.batchSize)]))
                 
@@ -163,7 +156,6 @@ class DataGenerator(object):
             file = self.X_valList[counter]
             counter = (counter+1) % len(self.X_valList)     
             x, y = self.getNextBatch(file, mode='Val')
-            #y = self.oneHotEncode(y)
             for cbatch in range(0,x.shape[0], self.batchSize):
                 yield (x[cbatch:(cbatch+self.batchSize),:,:,:], self.oneHotEncode(y[cbatch:(cbatch+self.batchSize)]))                  
 
@@ -173,60 +165,45 @@ class DataGenerator(object):
             file = self.X_testList[counter]
             counter = (counter+1) % len(self.X_testList)    
             x, y = self.getNextBatch(file, mode='Test')
-            #y = self.oneHotEncode(y)            
             for cbatch in range(0, x.shape[0], self.batchSize):
                 yield (x[cbatch:(cbatch+self.batchSize),:,:,:],  self.oneHotEncode(y[cbatch:(cbatch+self.batchSize)]))
     
-    '''
-    Gets as input the dense ylabel matrix and returns the one 
-    hot encoding of indexed labels: input-> y[n_sample,n_feats]
-    '''
     def oneHotEncode(self, y):
-        #print(type(y))
-        #print(y.shape)
-        '''
-        new_y = np.empty((y.shape[0],self.img_rows,self.img_cols,self.classes), dtype='uint8')
-        for index,value in np.ndenumerate(y):
-            #print(type(index[0]))
-            new_y[index[0],index[1]//self.img_rows,index[1]%self.img_cols] = to_categorical(y[index[0],index[1]],\
-                num_classes=self.classes)
-        return new_y 
+        '''Gets as input the dense ylabel matrix and returns the one 
+           hot encoding of indexed labels: input-> y[n_sample,n_feats]
         '''
         samples = y.shape[0]
         y = y.flatten()
         y = to_categorical(y, num_classes=self.classes)
         return np.reshape(y, (samples, self.img_rows, self.img_cols, self.classes))
 
-    '''
-    Shuffle the samples to overcome overfitting with specific classes 
-    '''
     def shuffle(self, x, y):
+        '''Shuffle the samples to overcome overfitting with specific classes 
+        '''
         s = np.arange(x.shape[0])
         np.random.shuffle(s)
         return x[s], y[s] 
     
-    '''
-    Function used for scaling the samples to get zero mean and unit variance
-    '''
     def standardize(self, X):
+        '''Function used for scaling the samples to get zero mean and unit variance
+        '''
         X -= self.mean
         X  = np.true_divide(X, self.std)
         return X
     
     def fileShuffle(self, x ,y):
         return shuffle(x,y)
-    '''
-    Load the data from the file to a list, seperate the labels from
-    the samples
-    '''
+    
     def loadData(self):
+        '''Load the data from the file to a list, seperate the labels from
+        the samples
+        '''
         for file in sorted(os.listdir(self.trainPath)):
             if file not in labels.listLabels:
                 if file.startswith('X'):
                     self.X_trainList.append(file)
                 elif file.startswith('Y'):
                     self.Y_trainList.append(file)
-        #self.X_trainList, Y_trainList = self.fileShuffle(self.X_trainList, self.Y_trainList)
         
         for file in sorted(os.listdir(self.valPath)):
             if file not in labels.listLabels:
@@ -247,7 +224,7 @@ class DataGenerator(object):
     ''' 
     def computeTestClasses(self):
         for file in self.Y_testList:
-            y = np.load(self.testPath+'/'+file).astype('uint8')
+            y = np.load(os.path.join(self.testPath, file)).astype('uint8')
             y = self.oneHotEncode(np.reshape(y, (y.shape[0], self.img_rows*self.img_cols)))
             if self.allTestClasses.size == 0:
                 self.allTestClasses = y
@@ -256,31 +233,29 @@ class DataGenerator(object):
         return
     
 
-    '''
-    Calculate the mean and variance from samples from 
-    the train set to standardize the datasets, we take randomly
-    some samples from the train set to make samplewise normalization
-    reducing the computation requirements for the operation
-    '''
     def getStats(self):
-        X_sample = np.load(self.trainPath+'/'+random.choice(self.X_trainList))
+        '''Calculate the mean and variance from samples from 
+        the train set to standardize the datasets, we take randomly
+        some samples from the train set to make samplewise normalization
+        reducing the computation requirements for the operation
+        '''
+        X_sample = np.load(os.path.join(self.trainPath, random.choice(self.X_trainList)))
         self.mean = np.mean(X_sample, axis=0, keepdims=True)
         self.std = 255.
         return
     
-    '''
-    Get the number of samples from each set(train, validation, test) from the 
-    partitioned files
-    '''
     def datasetSize(self):
+        '''Get the number of samples from each set(train, validation, test) from the 
+        partitioned files
+        '''
         for file in self.Y_trainList:
-            Y = np.load(self.trainPath+'/'+file)
+            Y = np.load(os.path.join(self.trainPath, file))
             self.trainSetSize += Y.shape[0]
         for file in self.Y_valList:
-            Y = np.load(self.valPath+'/'+file)
+            Y = np.load(os.path.join(self.valPath, file))
             self.valSetSize += Y.shape[0]
         for file in self.Y_testList:
-            Y = np.load(self.testPath+'/'+file)
+            Y = np.load(os.path.join(self.testPath, file))
             self.testSetSize += Y.shape[0]
         
         print('---------------------------------------')
@@ -309,8 +284,11 @@ class DataGenerator(object):
     def getClasses(self, index):
         return self.allTestClasses[:index]
 
+
     # Random trasformation
     def random_transform(self, x, y):
+        """Method for random transformations
+        """
         # x is a single image, so it doesn't have image number at index 0
         img_row_index = self.row_index - 1
         img_col_index = self.col_index - 1

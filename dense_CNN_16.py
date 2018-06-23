@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from __future__ import print_function
+
 import os
 import labels
 import numpy as np
@@ -21,9 +22,9 @@ from keras import backend as K
 from keras.activations import softmax
 
 from weighted_categorical_crossentropy import weighted_categorical_crossentropy, weighted_loss
-from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, CSVLogger
-from dataGenerator import DataGenerator
-from sklearn.metrics import classification_report, confusion_matrix, jaccard_similarity_score
+from keras.callbacks    import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, CSVLogger
+from dataGenerator      import DataGenerator
+from sklearn.metrics    import classification_report, confusion_matrix, jaccard_similarity_score
 from BillinearUpsampling import BilinearUpSampling2D
 import itertools
 
