@@ -48,8 +48,9 @@ testFinePath    = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtF
 #############################################
 def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern, mode):
     counter = 0
-    index = 0
-    skip = 0      # skip the first # images
+    index   = 0
+    skip    = 0      # skip the first # images
+    
     skipIndex = 0 #Keep index of the skipped images
     fileIndex = 1
 
@@ -65,10 +66,10 @@ def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern, mode):
             continue
         print(counter)
         
-        image = io.imread(imagepath+'/'+file)
+        image = io.imread(os.path.join(imagepath, file))
         h, w, c  = image.shape
         # load the annoated image
-        labelImage = io.imread(finepath+'/'+re.findall('\w+_\d+_\d+_', file)[0]+finePattern)
+        labelImage = io.imread(os.path.join(finepath, re.findall('\w+_\d+_\d+_', file)[0]+finePattern))
         im = np.array(image)
         imLabels = np.array(labelImage)
         imLabels = np.clip(imLabels, 0, 19)

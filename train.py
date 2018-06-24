@@ -1,3 +1,4 @@
+#!/usr/bin/python
 
 import os
 from lib.buildModels import bilinear_CNN, SD_CNN, CRFRNN

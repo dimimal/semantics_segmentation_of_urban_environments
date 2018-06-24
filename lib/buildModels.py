@@ -4,16 +4,18 @@ from keras.layers import Input, Dense, Flatten, Activation, Reshape
 from keras.layers import Conv2D, MaxPooling2D, Conv2DTranspose, UpSampling2D, Lambda, core, Add, Concatenate
 from bilinearUpsampling import BilinearUpSampling2D
 from lib.crfasrnn_keras.src.crfrnn_layer import CrfRnnLayer
+from keras.activations import softmax
 
-def CRFRNN(unary_model, image_shape=(512,512,3), unary_input=(512,512,20), num_classes=20):
-    """Implements CRF-RNN post processing unit along with SD_CNN
+def CRFRNN(unary_model, image_shape=(512,512,3), unary_input=(512,512,20), num_classes=20, theta_a=160.,\
+    theta_b=90., theta_g=3., iters=5):
+    """Implements CRF-RNN post processing unit along with SD_CNN or BD_CNN
     """
 
     # TODO: Pass CRF Hyperparameters
     if unary_model == 'sdcnn':
-        front_model = SD_CNN(image_shape)
+        front_model = SD_CNN(crf=True)
     elif  unary_model == 'bdcnn':
-        front_model = bilinear_CNN()
+        front_model = bilinear_CNN(crf=True)
     else:
         raise Exception('Unknown CNN network {}'.format(unary_model))
 
@@ -21,10 +23,10 @@ def CRFRNN(unary_model, image_shape=(512,512,3), unary_input=(512,512,20), num_c
     input_2     = Input(shape=(unary_input))
     output      = CrfRnnLayer(image_dims=(image_shape[0], image_shape[1]),
                          num_classes=num_classes,
-                         theta_alpha=160.,
-                         theta_beta=90.,
-                         theta_gamma=3.,
-                         num_iterations=5,
+                         theta_alpha=theta_a,
+                         theta_beta=theta_b,
+                         theta_gamma=theta_g,
+                         num_iterations=iters,
                          name='crfrnn')([input_2, input_1])
     #
     front_model = Model(inputs=front_model.input, outputs=front_model.output)
@@ -35,7 +37,7 @@ def CRFRNN(unary_model, image_shape=(512,512,3), unary_input=(512,512,20), num_c
 
 
 
-def bilinear_CNN(input_shape=(512,512,3), num_classes=20):
+def bilinear_CNN(input_shape=(512,512,3), num_classes=20, crf=False):
     #input_shape = (patchSize, patchSize, channels)        
     inputs = Input(shape=input_shape)
 
@@ -91,12 +93,16 @@ def bilinear_CNN(input_shape=(512,512,3), num_classes=20):
 
     predictions = Conv2DTranspose(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal', name='Deconv_9')(x)
     
+    # Add softmax layer if crf is not on top
+    if crf:
+        predictions  = softmax(predictions)
+
     model = Model(inputs=inputs, outputs=predictions)
     
     return model
 
 
-def SD_CNN(input_shape=(512,512,3), num_classes=20):
+def SD_CNN(input_shape=(512,512,3), num_classes=20, crf=False):
     inputs = Input(shape=input_shape)
     #
     x = Conv2D(32, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_1')(inputs)
@@ -152,6 +158,10 @@ def SD_CNN(input_shape=(512,512,3), num_classes=20):
     #
     predictions = Conv2DTranspose(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal', name='Deconv_9')(x)
     
+    # Add softmax layer if crf is not on top
+    if crf:
+        predictions  = softmax(predictions)
+
     model = Model(inputs=inputs, outputs=predictions)
    
     return model

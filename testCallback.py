@@ -12,7 +12,7 @@ class TestCallback(Callback):
         self.set 		= testSetSize
 
     def on_epoch_end(self, epoch, logs={}):           
-        self.score[epoch,:] = self.model.evaluate_generator(self.generator,steps=self.set//self.batchsize,use_multiprocessing=True)
+        self.score[epoch,:] = self.model.evaluate_generator(self.generator,steps=self.set//self.batchsize, use_multiprocessing=True)
         print('\nTesting loss: {}, acc: {}\n'.format(self.score[epoch,0], self.score[epoch,1]))
 
 # TODO: implement mIoU Callback
