@@ -1,7 +1,6 @@
 # Semantics Segmentation of Urban Environments
 
-This is my undergraduate dissertation project. The goal of this thesis is to examine two variations of CNN arhitectures 
-using [Self-Normalization](https://arxiv.org/abs/1706.02515) technique along with CRF-RNN post processing unit. Due to visualize the results of the model properly a Visualizer based on [CityscapesScripts](https://github.com/mcordts/cityscapesScripts) has been implemented to visualize the results.
+This is my undergraduate dissertation project. The goal of this thesis is to examine and compare the results from two variations of CNN Encode-Decode arhitectures using [Self-Normalization](https://arxiv.org/abs/1706.02515) technique along with CRF-RNN post processing unit. Due to visualize the results of the model properly a Visualizer based on [CityscapesScripts](https://github.com/mcordts/cityscapesScripts) has been implemented to visualize the results.
 
 ## Cityscapes Dataset
 [Cityscapes](https://www.cityscapes-dataset.com/)
