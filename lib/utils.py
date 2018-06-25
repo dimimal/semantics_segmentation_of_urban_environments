@@ -198,9 +198,6 @@ def load_model(modelPath, weights=None):
     json_file.close()
 
     model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
-    if os.path.exists(weights):
-        model.load_weights(weights)
-        print('Weights loaded successfully')       
     return model
 
 def alpha_coefficients():

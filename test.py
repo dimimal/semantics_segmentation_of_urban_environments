@@ -102,7 +102,7 @@ def main(args):
         mode = 'image'
 
     if args.model:
-        model = load_model(args.model, weights=args.weights)
+        model = load_model(args.model)
     else: 
         raise Exception('Model not given {}'.format(args.model))
     
@@ -112,6 +112,12 @@ def main(args):
     model.compile(loss=weighted_loss(NUM_CLASSES, coefficients),
                   optimizer=Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.001),
                   metrics=['accuracy'])
+    
+    # Load Weights
+    if args.weights is not None:    
+        if os.path.exists(args.weights):
+            model.load_weights(args.weights)
+            print('Weights loaded successfully')       
 
     if mode == 'eval':
         if os.path.exists(args.image_folder) and os.path.exists(args.gt_folder):
