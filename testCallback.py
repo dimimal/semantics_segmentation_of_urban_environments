@@ -16,3 +16,11 @@ class TestCallback(Callback):
         print('\nTesting loss: {}, acc: {}\n'.format(self.score[epoch,0], self.score[epoch,1]))
 
 # TODO: implement mIoU Callback
+"""
+class MeanIoU(Callback):
+	#docstring for MeanIoU Callback
+	
+	def __init__(self, arg):
+		super(MeanIoU,Callback).__init__()
+		self.arg = arg
+"""		

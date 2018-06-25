@@ -2,6 +2,10 @@ from keras.preprocessing import image
 import labels
 import cv2 as cv
 from lib.bilinearUpsampling import BilinearUpSampling2D
+import sys
+import os
+import re
+import matplotlib.pyplot as plt
 
 def plot_results(y_true, y_pred, cfMatrix=False, score=[],  history=None):    
     
@@ -58,13 +62,23 @@ def plot_results(y_true, y_pred, cfMatrix=False, score=[],  history=None):
         plt.show()
 
 
-def load_image(imagePath, patchSize, show=False, scale=True):
+def load_image(imagePath, patchSize, show=False, scale=True, mean=None):
+    """loads the image from the path and scales it properly
+
+    Input:
+        imagePath: The path of the image
+        patchSize: The square size of the image
+        scale: Scale to the right space
+        mean: the mean frame from the training set 
+    """
     img = image.load_img(imagePath)
     img = image.img_to_array(img)
     if scale:
         img = cv.resize(img, dsize=(img.shape[0]/2,img.shape[1]/4), interpolation=cv.INTER_CUBIC)
     img = np.expand_dims(img, axis=0)
-    img -= mean
+    if not mean:
+        #np.load(asdas) Load the mean frame
+        img -= mean
     img /= 255.
    
     if show:
@@ -116,21 +130,9 @@ def plot_confusion_matrix(cm,
     plt.xlabel('Predicted label')
 
 
-class TestCallback(Callback):
-    def __init__(self, epochs, testgenerator, batchsize, testSetSize):
-        self.score      = np.zeros([epochs,2])
-        self.generator  = testgenerator
-        self.batchsize  = batchsize
-        self.set        = testSetSize
-
-    def on_epoch_end(self, epoch, logs={}):           
-        self.score[epoch,:] = self.model.evaluate_generator(self.generator,steps=self.set//self.batchsize,use_multiprocessing=True)
-        print('\nTesting loss: {}, acc: {}\n'.format(self.score[epoch,0], self.score[epoch,1]))
-
-
-    # Compute Globaly 
 def computeGlobalIou(cfArray):
-    # Remove last row and column
+    """Takes the confussion matrix in order to extract the results
+    """
     TP = np.diag(cfArray[:-1,:-1])
     FP = cfArray[:-1,:-1].sum(axis=0) - TP
     FN = cfArray[:-1,:-1].sum(axis=1) - TP
@@ -185,15 +187,20 @@ def getFileLists(testPath, gtTestPath):
 
     return imageList, gtImageList
 
-def load_model(modelPath):
+
+def load_model(modelPath, weights=None):
     # load json and create model
     json_file = open(modelPath, 'r')
     loaded_model_json = json_file.read()
     json_file.close()
 
     model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
+    if os.path.exists(weights):
+        model.load_weights(weightsPath)
+        print('Weights loaded successfully')       
     return model
 
 if __name__ == '__main__':
     print('This module is not callable.')
+
     

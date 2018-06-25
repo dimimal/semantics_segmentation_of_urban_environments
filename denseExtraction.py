@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+"""Change the paths accordingly to extract your npy files from cityscapes
+dataset in order to train the models
+"""
 from __future__ import print_function
 
 import time
@@ -23,7 +26,6 @@ finePattern     = 'gtFine_labelTrainIds.png'
 #####################################################
 # Configure paths for leftImg8bit image set
 #####################################################
-
 outTrainImgPath = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_train_set_{}/'.format(patchSize)
 outValImgPath   = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_validation_set_{}/'.format(patchSize)
 outTestImgPath  = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_test_set_{}/'.format(patchSize)

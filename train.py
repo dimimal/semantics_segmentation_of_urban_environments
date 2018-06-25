@@ -40,8 +40,8 @@ coefficients = {0:0.0237995754847,
 coefficients = [key for index,key in coefficients.iteritems()]
 
 def select_network(args):
-    if args.model and args.weights:
-        return load_model(args.model, args.weights)
+    if os.path.exists(args.model) and os.path.exists(args.weights):
+        return load_model(args.model, weights=args.weights)
 
     if args.crf:
         return CRFRNN(args.network)
@@ -82,14 +82,6 @@ def check_paths(args):
     raise Exception('File paths do not exist {}\n {}\n {}'.format(args.trainpath, args.validationpath, args.testpath))
     sys.exit(-1)
 
-def load_model(modelPath, weights):
-    # load json and create model
-    json_file = open(modelPath, 'r')
-    loaded_model_json = json_file.read()
-    json_file.close()
-
-    model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
-    return model
 
 def check_args(args):
     """checks and returns the arguments in a namedtuple structure
