@@ -1,6 +1,8 @@
 from keras.preprocessing import image
 import labels
+import numpy as np
 import cv2 as cv
+from keras.models import model_from_json
 from lib.bilinearUpsampling import BilinearUpSampling2D
 import sys
 import os
@@ -71,12 +73,13 @@ def load_image(imagePath, patchSize, show=False, scale=True, mean=None):
         scale: Scale to the right space
         mean: the mean frame from the training set 
     """
+    channels = 3
     img = image.load_img(imagePath)
     img = image.img_to_array(img)
     if scale:
         img = cv.resize(img, dsize=(img.shape[0]/2,img.shape[1]/4), interpolation=cv.INTER_CUBIC)
     img = np.expand_dims(img, axis=0)
-    if not mean:
+    if mean is not None:
         #np.load(asdas) Load the mean frame
         img -= mean
     img /= 255.
@@ -196,9 +199,35 @@ def load_model(modelPath, weights=None):
 
     model = model_from_json(loaded_model_json, custom_objects={'BilinearUpSampling2D':BilinearUpSampling2D})
     if os.path.exists(weights):
-        model.load_weights(weightsPath)
+        model.load_weights(weights)
         print('Weights loaded successfully')       
     return model
+
+def alpha_coefficients():
+    # Median Frequency Alpha Coefficients 
+    coefficients = {0:0.0237995754847,
+                    1:0.144286494916,
+                    2:0.038448897913,
+                    3:1.33901803472,
+                    4:1.0,
+                    5:0.715098627127,
+                    6:4.20827446939,
+                    7:1.58754122255,
+                    8:0.0551054437019,
+                    9:0.757994265912,
+                    10:0.218245600783,
+                    11:0.721125616748,
+                    12:6.51048559366,
+                    13:0.125434198729,
+                    14:3.27995580458,
+                    15:3.72813940546,
+                    16:3.76817843552,
+                    17:8.90686657342,
+                    18:2.12162414027,
+                    19:0.}
+
+    coefficients = [key for index,key in coefficients.iteritems()]
+    return coefficients
 
 if __name__ == '__main__':
     print('This module is not callable.')
