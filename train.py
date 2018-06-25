@@ -40,8 +40,9 @@ coefficients = {0:0.0237995754847,
 coefficients = [key for index,key in coefficients.iteritems()]
 
 def select_network(args):
-    if os.path.exists(args.model) and os.path.exists(args.weights):
-        return load_model(args.model, weights=args.weights)
+    if (args.model is not None) or (args.weights is not None):
+        if os.path.exists(args.model) and os.path.exists(args.weights):
+            return load_model(args.model, weights=args.weights)
 
     if args.crf:
         return CRFRNN(args.network)
@@ -65,7 +66,7 @@ def argument_parser():
     parser.add_argument('-trp', '--trainpath',  help='Absolute path of the training set', type=str)
     parser.add_argument('-vdp', '--validationpath', help='Absolute path of the validation set', type=str)
     parser.add_argument('-tsp', '--testpath', help='Absolute path of the test set', type=str)
-    parser.add_argument('-bs', '--batchsize', default=None, const=None, help='Specify the number of batches', type=int)
+    parser.add_argument('-bs', '--batchsize', default=1, help='Specify the number of batches', type=int)
     parser.add_argument('-crf', action='store_true', help='Flag to train with CRF module')
     parser.add_argument('-w', '--weights', nargs='?', default=None, const=None, help='The absolute path of the weights', type=str)
     parser.add_argument('-m', '--model', nargs='?', default=None, const=None, help='The absolute path of the model in json format', type=str)
