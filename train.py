@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import os
-from lib.buildModels import bilinear_CNN, SD_CNN, CRFRNN
+from lib.buildModels import bilinear_CNN, SD_CNN, CRFRNN, test_CNN
 from lib.dataGenerator import DataGenerator
 from keras.callbacks    import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, CSVLogger
 from lib.weighted_categorical_crossentropy import weighted_loss
@@ -10,10 +10,19 @@ import sys
 import time
 from collections import namedtuple
 from keras.optimizers import Adam, SGD 
+import keras.backend as K
+from tensorflow.python import debug as tf_debug
+from segDataGenerator import SegDataGenerator
+import numpy as np 
+
+# Debug commands
+sess = K.get_session()
+sess = tf_debug.LocalCLIDebugWrapperSession(sess)
+K.set_session(sess)
 
 NUM_CLASSES = 20
-IMG_ROWS    = 512
-IMG_COLS    = 512
+IMG_ROWS    = 640   
+IMG_COLS    = 960
 
 # Median Frequency Alpha Coefficients 
 coefficients = {0:0.0237995754847,
@@ -51,6 +60,8 @@ def select_network(args):
             return bilinear_CNN()
         elif args.network.lower() == 'sdcnn':
             return SD_CNN()
+        elif args.network.lower() == 'testcnn':
+            return test_CNN()
 
 def save_model_params(model, model_name, crf=False):
     if not crf:
@@ -105,6 +116,12 @@ def check_args(args):
 
     return model_params
 
+def get_file_len(file_path):
+    fp = open(file_path)
+    lines = fp.readlines()
+    fp.close()
+    return len(lines)
+
 def main(args):
 
     # Check if paths are in place
@@ -134,15 +151,11 @@ def main(args):
                                         verbose=1,
                                         cooldown=3)
 
-    # Instantiate data generator object
-    data_gen = DataGenerator(NUM_CLASSES, 
-                             parameters.batch, 
-                             IMG_ROWS, 
-                             IMG_COLS, 
-                             trainFolder, 
-                             valFolder, 
-                             testFolder)
-    
+
+    data_gen = SegDataGenerator(crop_mode='random', crop_size=(IMG_ROWS, IMG_COLS), horizontal_flip=True, featurewise_center=True, featurewise_std_normalization=True)
+
+    batch_size=2
+    steps_per_epoch = int(np.ceil(get_file_len(trainFolder) / float(batch_size)))
     
     model = select_network(parameters)
     model.summary()
@@ -153,12 +166,11 @@ def main(args):
 
     print(parameters.batch)
     start_time = time.time()
-    model.fit_generator(generator=data_gen.nextTrain(),
-                      steps_per_epoch=data_gen.getSize(mode='Train')//parameters.batch,
+    model.fit_generator(generator=data_gen.flow_from_directory(trainFolder, testFolder, data_suffix='.png', label_dir=valFolder, loss_shape=(IMG_ROWS, IMG_COLS, NUM_CLASSES), label_suffix='.png', classes= NUM_CLASSES),
+                      steps_per_epoch=steps_per_epoch,
                       epochs=args.epochs,
+                      workers=4,
                       verbose=1, 
-                      validation_data=data_gen.nextVal(),
-                      validation_steps=data_gen.getSize(mode='Val')//parameters.batch,
                       callbacks=[earlyStopping, plateauCallback, checkPoint, csv_logger])
 
     data_gen.computeTestClasses()

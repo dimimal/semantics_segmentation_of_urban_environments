@@ -16,9 +16,9 @@ import re
 trainImageSet       = None
 valImageSet         = None
 testImageSet        = None
-offset              = 500 # how many samples per file
-patchSize           = 512
-img_rows, img_cols  = 512, 512
+offset              = 200 # how many samples per file
+patchSize           = 640
+img_rows, img_cols  = 640, 960
 
 rawImagePattern = 'leftImg8bit.png'
 finePattern     = 'gtFine_labelTrainIds.png'
@@ -31,11 +31,11 @@ outValImgPath   = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/lef
 outTestImgPath  = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/dense_test_set_{}/'.format(patchSize)
 
 # Train set Path
-trainImagePath  = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/resized_train'
+trainImagePath  = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/train'
 # Validation set Path
-valImagePath    = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/resized_validation'
+valImagePath    = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/val'
 # Test set Path
-testImagePath   = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/resized_test'
+testImagePath   = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/leftImg8bit/test'
 
 ######################################################
 # Configure paths for gtFine labeled image set
@@ -48,7 +48,7 @@ testFinePath    = '/media/dimitris/TOSHIBA EXT/UTH/Thesis/Cityscapes_dataset/gtF
 # Extracts the patches from the image and 
 # saves to path(Dense pixel extraction)
 #############################################
-def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern, mode):
+def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern):
     counter = 0
     index   = 0
     skip    = 0      # skip the first # images
@@ -70,6 +70,7 @@ def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern, mode):
         
         image = io.imread(os.path.join(imagepath, file))
         h, w, c  = image.shape
+        print(image.shape)
         # load the annoated image
         labelImage = io.imread(os.path.join(finepath, re.findall('\w+_\d+_\d+_', file)[0]+finePattern))
         im = np.array(image)
@@ -77,7 +78,7 @@ def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern, mode):
         imLabels = np.clip(imLabels, 0, 19)
        
         # 2nd Try 
-        if imArray.size == patchSize*patchSize*c:
+        if imArray.size == img_rows*img_cols*c:
             imArray = np.stack((imArray, im), axis=0)
             yLabels = np.append(yLabels, imLabels)
         elif imArray.size == 0:
@@ -118,13 +119,13 @@ def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern, mode):
 def main():
     print('Train...')
     filePattern = ['X_train_set_', 'Y_train_set_']
-    denseExtractor(trainImageSet, trainImagePath, trainFinePath, outTrainImgPath, filePattern, mode)
+    denseExtractor(trainImageSet, trainImagePath, trainFinePath, outTrainImgPath, filePattern)
     print('Validation...')
     filePattern = ['X_validation_set_', 'Y_validation_set_']
-    denseExtractor(valImageSet, valImagePath, valFinePath, outValImgPath, filePattern, mode)
+    denseExtractor(valImageSet, valImagePath, valFinePath, outValImgPath, filePattern)
     print('Test...')
     filePattern = ['X_test_set_', 'Y_test_set_']
-    denseExtractor(testImageSet, testImagePath, testFinePath, outTestImgPath, filePattern, mode)
+    denseExtractor(testImageSet, testImagePath, testFinePath, outTestImgPath, filePattern)
 
 
 if __name__ == '__main__':

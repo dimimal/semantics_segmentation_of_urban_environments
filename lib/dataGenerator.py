@@ -120,6 +120,7 @@ class DataGenerator(object):
             # Normalize values
             if self.normalize:
                 X_train = self.standardize(X_train)
+            print(X_train.shape, Y_train.shape)
             return X_train, Y_train
 
 
@@ -277,11 +278,11 @@ class DataGenerator(object):
         elif mode == 'Test':
             return self.testSetSize
     
-    '''
-    Returns the yLabels from test set: Useful to extract confusion 
-    matrices and F1-scores
-    '''
     def getClasses(self, index):
+        '''
+        Returns the yLabels from test set: Useful to extract confusion 
+        matrices and F1-scores
+        '''
         return self.allTestClasses[:index]
 
 
@@ -369,6 +370,5 @@ class DataGenerator(object):
                 x = flip_axis(x, img_col_index)
                 y = flip_axis(y, img_col_index)
         y = np.squeeze(y).flatten()
-        #y = np.reshape(y, (1, y.shape[0]))
-        #print(y.shape, np.squeeze(y,axis=-1).shape)
+       
         return x, y
