@@ -4,6 +4,7 @@ from keras import backend as K
 from PIL import Image
 import numpy as np
 import os
+from keras.utils import to_categorical
 
 def center_crop(x, center_crop_size, data_format, **kwargs):
     if data_format == 'channels_first':
@@ -80,7 +81,8 @@ def pair_random_crop(x, y, random_crop_size, data_format, sync_seed=None, **kwar
 class SegDirectoryIterator(Iterator):
     '''
     Users need to ensure that all files exist.
-    Label images should be png images where pixel values represents class number.
+    Label images should be png images where pixel values
+    represents class number.
     find images -name *.jpg > images.txt
     find labels -name *.png > labels.txt
     for a file name 2011_002920.jpg, each row should contain 2011_002920
@@ -93,7 +95,7 @@ class SegDirectoryIterator(Iterator):
     loss_shape: shape to use when applying loss function to the label data
     '''
 
-    def __init__(self, file_path, 
+    def __init__(self, file_path,
                  seg_data_generator,
                  data_dir, data_suffix,
                  label_dir, label_suffix, classes, ignore_label=255,
@@ -105,25 +107,25 @@ class SegDirectoryIterator(Iterator):
                  loss_shape=None):
         if data_format == 'default':
             data_format = K.image_data_format()
-        self.file_path  = file_path
-        self.data_dir   = data_dir
-        self.data_suffix  = data_suffix
+        self.file_path = file_path
+        self.data_dir = data_dir
+        self.data_suffix = data_suffix
         self.label_suffix = label_suffix
         self.label_dir = label_dir
-        self.classes   = classes
+        self.classes = classes
         self.seg_data_generator = seg_data_generator
-        self.target_size  = tuple(target_size)
+        self.target_size = tuple(target_size)
         self.ignore_label = ignore_label
-        self.crop_mode  = crop_mode
+        self.crop_mode = crop_mode
         self.label_cval = label_cval
-        self.pad_size   = pad_size
+        self.pad_size = pad_size
         if color_mode not in {'rgb', 'grayscale'}:
             raise ValueError('Invalid color mode:', color_mode,
                              '; expected "rgb" or "grayscale".')
-        self.color_mode  = color_mode
+        self.color_mode = color_mode
         self.data_format = data_format
         self.nb_label_ch = 1
-        self.loss_shape  = loss_shape
+        self.loss_shape = loss_shape
 
         if (self.label_suffix == '.npy') or (self.label_suffix == 'npy'):
             self.label_file_format = 'npy'
@@ -161,7 +163,7 @@ class SegDirectoryIterator(Iterator):
         self.save_prefix = save_prefix
         self.save_format = save_format
 
-        white_list_formats = {'png', 'jpg', 'jpeg', 'bmp', 'npy'}
+        # white_list_formats = {'png', 'jpg', 'jpeg', 'bmp', 'npy'}
 
         # build lists for data files and label files
         self.data_files = []
@@ -172,8 +174,9 @@ class SegDirectoryIterator(Iterator):
         self.nb_sample = len(lines)
         for line in lines:
             line = line.strip('\n')
-            self.data_files.append(line )#+ data_suffix) Remove suffices
-            self.label_files.append(line )#+ label_suffix)
+            self.data_files.append(line.split(',')[0] + data_suffix)
+            self.label_files.append(line.split(',')[1] + data_suffix)
+
         super(SegDirectoryIterator, self).__init__(
             self.nb_sample, batch_size, shuffle, seed)
 
@@ -198,7 +201,7 @@ class SegDirectoryIterator(Iterator):
         grayscale = self.color_mode == 'grayscale'
         # build batch of image data and labels
         for i, j in enumerate(index_array):
-            data_file  = self.data_files[j]
+            data_file = self.data_files[j]
             label_file = self.label_files[j]
             img_file_format = 'img'
             img = load_img(os.path.join(self.data_dir, data_file),
@@ -256,6 +259,8 @@ class SegDirectoryIterator(Iterator):
             if self.ignore_label:
                 y[np.where(y == self.ignore_label)] = self.classes
 
+            y = to_categorical(y, num_classes=self.classes + 1)
+
             if self.loss_shape is not None:
                 y = np.reshape(y, self.loss_shape)
 
@@ -285,7 +290,6 @@ class SegDirectoryIterator(Iterator):
 
 
 class SegDataGenerator(object):
-
     def __init__(self,
                  featurewise_center=False,
                  samplewise_center=False,
@@ -349,7 +353,7 @@ class SegDataGenerator(object):
                             ignore_label=255,
                             target_size=None, color_mode='rgb',
                             class_mode='sparse',
-                            batch_size=32, shuffle=True, seed=None,
+                            batch_size=1, shuffle=True, seed=None,
                             save_to_dir=None, save_prefix='', save_format='jpeg',
                             loss_shape=None):
         if self.crop_mode == 'random' or self.crop_mode == 'center':
@@ -369,6 +373,7 @@ class SegDataGenerator(object):
             loss_shape=loss_shape)
 
     def standardize(self, x):
+        """
         if self.rescale:
             x *= self.rescale
         # x is a single image, so it doesn't have image number at index 0
@@ -379,12 +384,15 @@ class SegDataGenerator(object):
             x /= (np.std(x, axis=img_channel_index, keepdims=True) + 1e-7)
 
         if self.featurewise_center:
+            print(type(x), type(self.mean))
             x -= self.mean
         if self.featurewise_std_normalization:
             x /= (self.std + 1e-7)
 
         if self.channelwise_center:
             x -= self.ch_mean
+        """
+        x /= 255
         return x
 
     def random_transform(self, x, y):

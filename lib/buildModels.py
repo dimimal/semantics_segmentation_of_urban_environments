@@ -33,13 +33,13 @@ def CRFRNN(unary_model, image_shape=(512,512,3), unary_input=(512,512,20), num_c
     front_model = Model(inputs=front_model.input, outputs=front_model.output)
     top_model   = Model(inputs=[input_2, input_1], outputs=output)
     model       = Model(inputs=front_model.input, outputs=top_model([front_model.output, front_model.input]))
-    
+
     return model
 
 
 
 def bilinear_CNN(input_shape=(512,512,3), num_classes=20, crf=False):
-    #input_shape = (patchSize, patchSize, channels)        
+    #input_shape = (patchSize, patchSize, channels)
     inputs = Input(shape=input_shape)
 
     #
@@ -66,7 +66,7 @@ def bilinear_CNN(input_shape=(512,512,3), num_classes=20, crf=False):
     atrous_2 = Conv2D(256, (3,3), dilation_rate=(6,6), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_2_1')(x)
     atrous_2 = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_2_2')(atrous_2)
     atrous_2 = Conv2D(128, (1,1), activation='selu', kernel_initializer='lecun_normal', name='Atrous_2_3')(atrous_2)
-    #   
+    #
     atrous_3 = Conv2D(256, (3,3), dilation_rate=(9,9), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_3_1')(x)
     atrous_3 = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_3_2')(atrous_3)
     atrous_3 = Conv2D(128, (1,1), padding='valid',  activation='selu', kernel_initializer='lecun_normal', name='Atrous_3_3')(atrous_3)
@@ -82,7 +82,7 @@ def bilinear_CNN(input_shape=(512,512,3), num_classes=20, crf=False):
     #
     x = BilinearUpSampling2D(size=(2, 2))(x)
     x = Conv2DTranspose(128, (3,3),  padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_2')(x)
-    #    
+    #
     x = BilinearUpSampling2D(size=(2, 2))(x)
     x = Conv2DTranspose(128, (3,3),  padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_4')(x)
     #
@@ -93,13 +93,13 @@ def bilinear_CNN(input_shape=(512,512,3), num_classes=20, crf=False):
     x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_8')(x)
 
     predictions = Conv2DTranspose(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal', name='Deconv_9')(x)
-    
+
     # Add softmax layer if crf is not on top
     if crf:
         predictions  = softmax(predictions)
 
     model = Model(inputs=inputs, outputs=predictions)
-    
+
     return model
 
 
@@ -129,7 +129,7 @@ def SD_CNN(input_shape=(640,960,3), num_classes=20, crf=False):
     atrous_2 = Conv2D(256, (3,3), dilation_rate=(6,6), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_2_1')(x)
     atrous_2 = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_2_2')(atrous_2)
     atrous_2 = Conv2D(128, (1,1), activation='selu', kernel_initializer='lecun_normal', name='Atrous_2_3')(atrous_2)
-    #   
+    #
     atrous_3 = Conv2D(256, (3,3), dilation_rate=(9,9), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_3_1')(x)
     atrous_3 = Conv2D(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_3_2')(atrous_3)
     atrous_3 = Conv2D(128, (1,1), padding='valid',  activation='selu', kernel_initializer='lecun_normal', name='Atrous_3_3')(atrous_3)
@@ -145,7 +145,7 @@ def SD_CNN(input_shape=(640,960,3), num_classes=20, crf=False):
     #
     x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_1')(x)
     x = Conv2DTranspose(128, (3,3),  padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_2')(x)
-    #    
+    #
     x = Conv2DTranspose(128, (3,3), strides=(2, 2), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_3')(x)
     x = Conv2DTranspose(128, (3,3),  padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_4')(x)
     #   x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal')(x)
@@ -158,28 +158,28 @@ def SD_CNN(input_shape=(640,960,3), num_classes=20, crf=False):
     x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_8')(x)
     #
     predictions = Conv2DTranspose(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal', name='Deconv_9')(x)
-    
+
     # Add softmax layer if crf is not on top
     if crf:
         predictions  = softmax(predictions)
 
     model = Model(inputs=inputs, outputs=predictions)
-   
+
     return model
 
 
 def test_CNN(input_shape=(640,960,3), num_classes=20, crf=False, batch_size=2):
-    #input_shape = (patchSize, patchSize, channels)        
+    #input_shape = (patchSize, patchSize, channels)
     inputs = Input(shape=input_shape)
 
     #
     x = Conv2D(64, (5,5), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_1')(inputs)
     x = Conv2D(64, (5,5), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_2')(x)
-    x = MaxPooling2D(pool_size=(2, 2), name='Pool_1')(x)
+    x = MaxPooling2D(pool_size=(9, 9), name='Pool_1')(x)
     #
     x = Conv2D(128, (5,5), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_3')(x)
     x = Conv2D(128, (5,5), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_4')(x)
-    x = MaxPooling2D(pool_size=(2, 2), name='Pool_2')(x)
+    x = MaxPooling2D(pool_size=(5, 5), name='Pool_2')(x)
     #
     x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_5')(x)
     x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_6')(x)
@@ -188,15 +188,7 @@ def test_CNN(input_shape=(640,960,3), num_classes=20, crf=False, batch_size=2):
     atrous_1 = Conv2D(256, (3,3), dilation_rate=(6,6), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_1_1')(x)
     atrous_1 = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_1_2')(atrous_1)
     atrous_1 = Conv2D(256, (3,3), activation='selu', kernel_initializer='lecun_normal', padding='same', name='Atrous_1_3')(atrous_1)
-    #
-    atrous_2 = Conv2D(256, (3,3), dilation_rate=(12,12), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_2_1')(x)
-    atrous_2 = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_2_2')(atrous_2)
-    atrous_2 = Conv2D(256, (3,3), activation='selu', kernel_initializer='lecun_normal', padding='same', name='Atrous_2_3')(atrous_2)
-    #   
-    atrous_3 = Conv2D(256, (3,3), dilation_rate=(18,18), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_3_1')(x)
-    atrous_3 = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_3_2')(atrous_3)
-    atrous_3 = Conv2D(256, (3,3), padding='same',  activation='selu', kernel_initializer='lecun_normal', name='Atrous_3_3')(atrous_3)
-    #
+
     """
     print(type(x))
     Average = GlobalAveragePooling2D()(x)
@@ -218,17 +210,17 @@ def test_CNN(input_shape=(640,960,3), num_classes=20, crf=False, batch_size=2):
     x = BilinearUpSampling2D(size=(2, 2))(x)
     x = Conv2DTranspose(256, (3,3),  padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_2')(x)
     x = Conv2DTranspose(256, (3,3),  padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_4')(x)
-    #    
+    #
     x = BilinearUpSampling2D(size=(2, 2))(x)
     x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_6')(x)
     x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_7')(x)
     #
     x = BilinearUpSampling2D(size=(2, 2))(x)
-    x = Conv2DTranspose(64, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_8')(x)
+    x = Conv2DTranspose(64, (3,3), padding='same', activation='relu', kernel_initializer='lecun_normal', name='Deconv_8')(x)
     predictions = Conv2DTranspose(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal', name='Deconv_9')(x)
 
 
     model = Model(inputs=inputs, outputs=predictions)
-    
+
     return model
-    
+
