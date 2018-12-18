@@ -10,6 +10,7 @@ import numpy as np
 import os
 from skimage import io
 import re
+import cv2
 
 # How many images you want to cut into patches
 # set to None to extract all of them
@@ -52,70 +53,77 @@ def denseExtractor(imageSet, imagepath, finepath, outpath, filePattern):
     counter = 0
     index   = 0
     skip    = 0      # skip the first # images
-    
+
     skipIndex = 0 #Keep index of the skipped images
     fileIndex = 1
 
-    x_Handler = open(outpath+filePattern[0]+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
-    y_Handler = open(outpath+filePattern[1]+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
-    
     imArray = np.array([])
     yLabels = np.array([])
-    
-    for file in sorted(os.listdir(imagepath)):
-        if skipIndex < skip:
-            skipIndex +=1
-            continue
-        print(counter)
-        
-        image = io.imread(os.path.join(imagepath, file))
-        h, w, c  = image.shape
-        print(image.shape)
-        # load the annoated image
-        labelImage = io.imread(os.path.join(finepath, re.findall('\w+_\d+_\d+_', file)[0]+finePattern))
-        im = np.array(image)
-        imLabels = np.array(labelImage)
-        imLabels = np.clip(imLabels, 0, 19)
-       
-        # 2nd Try 
-        if imArray.size == img_rows*img_cols*c:
-            imArray = np.stack((imArray, im), axis=0)
-            yLabels = np.append(yLabels, imLabels)
-        elif imArray.size == 0:
-            imArray = im
-            yLabels = np.append(yLabels, imLabels)
-        else:
-            imArray = np.insert(imArray, index, im, axis=0)
-            yLabels = np.append(yLabels, imLabels)
-        counter += 1
-        if index == offset-1:
-            np.save(x_Handler, imArray)
-            np.save(y_Handler, yLabels)
-            fileIndex += 1
-            x_Handler.close()
-            y_Handler.close()
-            # Reset the arrays for refill
-            imArray = np.array([])
-            yLabels = np.array([])
 
-            x_Handler = open(outpath+filePattern[0]+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
-            y_Handler = open(outpath+filePattern[1]+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
-            index = 0
-            print(outpath+filePattern[0])
-            print('{}  Saved...'.format(fileIndex))
-            continue
-        index   += 1
+    for subdir, dirs, files in os.walk(imagepath):
+        for file in files:
+            if skipIndex < skip:
+                skipIndex +=1
+                continue
+
+            image = io.imread(os.path.join(subdir, file))
+            h, w, c  = image.shape
+
+            labelImage = io.imread(os.path.join(finepath, re.findall('\w+_\d+_', file)[0]+ finePattern))
+
+            image = cv2.resize(image, (img_cols, img_rows), cv2.INTER_CUBIC)[:, :, ::-1]
+            labelImage = cv2.resize(labelImage, (img_cols, img_rows), cv2.INTER_NEAREST)
+
+            image = np.expand_dims(image, axis=0)
+            labelImage = np.expand_dims(labelImage, axis=0)
+
+            im = np.array(image)
+            imLabels = np.array(labelImage)
+            imLabels = np.clip(imLabels, 0, 19)
+
+            # 2nd Try
+            if imArray.ndim == 1:
+                imArray = im
+                yLabels = imLabels
+            else:
+                imArray = np.concatenate((imArray, im), axis=0)
+                yLabels = np.concatenate((yLabels, imLabels), axis=0)
+            # counter += 1
+
+            if index == offset-1:
+                x_Handler = open(outpath+filePattern[0]+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+                y_Handler = open(outpath+filePattern[1]+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+
+                np.save(x_Handler, imArray)
+                np.save(y_Handler, yLabels)
+
+                fileIndex += 1
+                x_Handler.close()
+                y_Handler.close()
+
+                # Reset the arrays for refill
+                imArray = np.array([])
+                yLabels = np.array([])
+                print(index)
+                index = 0
+                print(outpath+filePattern[0])
+                print('{}  Saved...'.format(fileIndex))
+                continue
+            index   += 1
 
     # Check if the file handlers are closed with the residual samples
-    if not x_Handler.closed and not y_Handler.closed:
+    if imArray.size > 0:
+        x_Handler = open(outpath+filePattern[0]+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+        y_Handler = open(outpath+filePattern[1]+str(patchSize)+'_'+'%04d.npz'%(fileIndex), 'wb')
+
         np.save(x_Handler, imArray)
         np.save(y_Handler, yLabels)
         x_Handler.close()
-        y_Handler.close() 
+        y_Handler.close()
         imArray = np.array([])
         yLabels = np.array([])
 
-    
+
 def main():
     print('Train...')
     filePattern = ['X_train_set_', 'Y_train_set_']

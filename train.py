@@ -173,7 +173,7 @@ def main(args):
                       verbose=1, 
                       callbacks=[earlyStopping, plateauCallback, checkPoint, csv_logger])
 
-    data_gen.computeTestClasses()
+    #data_gen.computeTestClasses()
     print("--- %s seconds ---" % (time.time() - start_time))
     save_model_params(model, args.network, args.crf)
 
