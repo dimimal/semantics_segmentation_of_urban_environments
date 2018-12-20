@@ -20,8 +20,8 @@ if '--debug' in sys.argv:
     K.set_session(sess)
 
 NUM_CLASSES = 19
-IMG_ROWS = 640
-IMG_COLS = 960
+IMG_ROWS = 512
+IMG_COLS = 512
 
 # Median Frequency Alpha Coefficients
 coefficients = {
@@ -61,7 +61,7 @@ def select_network(args):
         elif args.network.lower() == 'sdcnn':
             return SD_CNN(input_shape=(IMG_ROWS, IMG_COLS, 3))
         elif args.network.lower() == 'testcnn':
-            return test_CNN()
+            return test_CNN(input_shape=(IMG_ROWS, IMG_COLS, 3))
 
 def save_model_params(model, model_name, crf=False):
     if not crf:

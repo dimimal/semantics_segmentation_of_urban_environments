@@ -1,6 +1,6 @@
 import sys
 from keras.models import Model, Sequential, model_from_json
-from keras.layers import Input, Dense, Flatten, Activation, Reshape
+from keras.layers import Input, Dense, Flatten, Activation, Reshape, concatenate
 from keras.layers import Conv2D, MaxPooling2D, Conv2DTranspose, UpSampling2D, Lambda, core, Add, Concatenate, GlobalAveragePooling2D
 from bilinearUpsampling import BilinearUpSampling2D
 from lib.crfasrnn_keras.src.crfrnn_layer import CrfRnnLayer
@@ -175,48 +175,31 @@ def test_CNN(input_shape=(640,960,3), num_classes=20, crf=False, batch_size=2):
     #
     x = Conv2D(64, (5,5), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_1')(inputs)
     x = Conv2D(64, (5,5), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_2')(x)
-    x = MaxPooling2D(pool_size=(9, 9), name='Pool_1')(x)
+    x = MaxPooling2D(pool_size=(2, 2), name='Pool_1')(x)
     #
     x = Conv2D(128, (5,5), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_3')(x)
     x = Conv2D(128, (5,5), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_4')(x)
-    x = MaxPooling2D(pool_size=(5, 5), name='Pool_2')(x)
+    pool_2 = MaxPooling2D(pool_size=(2, 2), name='Pool_2')(x)
     #
-    x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_5')(x)
+    x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_5')(pool_2)
     x = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Conv_6')(x)
     x = MaxPooling2D(pool_size=(2, 2), name='Pool_3')(x)
     #
-    atrous_1 = Conv2D(256, (3,3), dilation_rate=(6,6), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_1_1')(x)
+    atrous_1 = Conv2D(256, (3,3), dilation_rate=(6,6), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_1_1')(pool_2)
     atrous_1 = Conv2D(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Atrous_1_2')(atrous_1)
     atrous_1 = Conv2D(256, (3,3), activation='selu', kernel_initializer='lecun_normal', padding='same', name='Atrous_1_3')(atrous_1)
 
-    """
-    print(type(x))
-    Average = GlobalAveragePooling2D()(x)
-    mat = K.zeros(shape=(batch_size, atrous_3.shape[1],atrous_3.shape[2],                   atrous_3.shape[3]))
-    mat = K.permute_dimensions(mat,(2,0,1,3))
-    temp = Add(name='Add')([mat, Average])
-    Average = K.permute_dimensions(temp, (1,2,0,3))
-    #Average = Lambda(lambda Average: Average)(Average)
-
-    print(Average.shape)
-    print(type(Average))
-    #
-    x = Add(name='Fusion')([atrous_1, atrous_2, atrous_3, Average, x])
-    #
-    """
-    print(x.shape)
-    print(type(x))
-
     x = BilinearUpSampling2D(size=(2, 2))(x)
-    x = Conv2DTranspose(256, (3,3),  padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_2')(x)
-    x = Conv2DTranspose(256, (3,3),  padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_4')(x)
+    x = Conv2DTranspose(512, (3,3),  padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_2')(x)
+    x = Conv2DTranspose(512, (3,3),  padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_4')(x)
+    #
+    x = concatenate([x, atrous_1], axis=-1)
+    x = BilinearUpSampling2D(size=(2, 2))(x)
+    x = Conv2DTranspose(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_6')(x)
+    x = Conv2DTranspose(256, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_7')(x)
     #
     x = BilinearUpSampling2D(size=(2, 2))(x)
-    x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_6')(x)
-    x = Conv2DTranspose(128, (3,3), padding='same', activation='selu', kernel_initializer='lecun_normal', name='Deconv_7')(x)
-    #
-    x = BilinearUpSampling2D(size=(2, 2))(x)
-    x = Conv2DTranspose(64, (3,3), padding='same', activation='relu', kernel_initializer='lecun_normal', name='Deconv_8')(x)
+    x = Conv2DTranspose(128, (3,3), padding='same', activation='relu', kernel_initializer='lecun_normal', name='Deconv_8')(x)
     predictions = Conv2DTranspose(num_classes, (1,1), padding='valid', kernel_initializer='lecun_normal', name='Deconv_9')(x)
 
 
