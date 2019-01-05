@@ -25,6 +25,28 @@ IMG_COLS = 512
 
 # Median Frequency Alpha Coefficients
 coefficients = {
+        0: 1.,
+        1: 1.,
+        2: 1.,
+        3: 1.,
+        4: 1.,
+        5: 1.,
+        6: 1.,
+        7: 1.,
+        8: 1.,
+        9: 1.,
+        10: 1.,
+        11: 1.,
+        12: 1.,
+        13: 1.,
+        14: 1.,
+        15: 1.,
+        16: 1.,
+        17: 1.,
+        18: 1.,
+        19: 0.}
+"""
+coefficients = {
         0: 0.0237995754847,
         1: 0.144286494916,
         2: 0.038448897913,
@@ -45,8 +67,9 @@ coefficients = {
         17: 8.90686657342,
         18: 2.12162414027,
         19: 0.}
-
+"""
 coefficients = [key for index, key in coefficients.iteritems()]
+
 
 def select_network(args):
     if (args.model is not None) or (args.weights is not None):
@@ -116,12 +139,14 @@ def check_args(args):
 
     return model_params
 
+
 def get_file_len(file_path):
     counter = 0
     with open(file_path, 'r') as f:
         for line in f.readlines():
             counter += 1
     return counter
+
 
 def main(args):
 
@@ -135,7 +160,10 @@ def main(args):
     earlyStopping = EarlyStopping(monitor='val_loss', patience=12)
 
     # Logger callback for learning curves
-    csv_logger = CSVLogger(os.path.join(os.getcwd(), 'train_log.csv'), append=True, separator=',')
+    csv_logger = CSVLogger(
+            os.path.join(os.path.dirname(__file__), 'train_log.csv'),
+            append=True,
+            separator=',')
 
     # Checkpoint to save the weights with the best validation accuracy.
     checkPoint = ModelCheckpoint(
@@ -191,7 +219,7 @@ def main(args):
             verbose=1,
             callbacks=[earlyStopping, plateauCallback, checkPoint, csv_logger])
 
-    #data_gen.computeTestClasses()
+    # data_gen.computeTestClasses()
     print("--- %s seconds ---" % (time.time() - start_time))
     save_model_params(model, args.network, args.crf)
 
